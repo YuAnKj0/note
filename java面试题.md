@@ -246,7 +246,7 @@ Java虚拟机对class文采用的是按需加载的方式，也就是说当需�
 
 2）如果父类加载器还存在其父类加载器，则进一步向上委托，依次递归，请求最终到达顶层的引导类加载器，
 
-
+![image-20220107091450216](C:/Users/16143/AppData/Roaming/Typora/typora-user-images/image-20220107091450216.png)
 
 
 
