@@ -226,25 +226,27 @@ Java NIO的选择器允许一个单独的线程监视多个输入通道，你可
 
 JVM的类的加载是通过CLassLoader及其子类完成的，
 
-1）BootStrap ClassLoader：负责加载%JAVA_HOME%中jre/lib/rt.jar里所有的class，由C#实现，不是ClassLoader子类
+1）BootStrap ClassLoader：引导类加载器，负责加载%JAVA_HOME%中jre/lib/rt.jar里所有的class，由C#实现，不是ClassLoader子类
 
-2）Extension ClassLoader：负责加载Java平台中扩展功能的一些jar包，包括$JAVA_HOME中jre/lib/ext/*.jar或者-Djava.ext.dirs指定目录下的包
+2）Extension ClassLoader：拓展类加载器，负责加载Java平台中扩展功能的一些jar包，包括$JAVA_HOME中jre/lib/ext/*.jar或者-Djava.ext.dirs指定目录下的包
 
-3）App ClassLoader：负责加载classpath中指定的jar包及目录中的class
+3）App ClassLoader：系统类加载器，负责加载classpath中指定的jar包及目录中的class
 
-4）Custom ClassLoader：如tomcat，jboss都会根据j2ee规范自行实现ClassLoader，加载过程中会先检查类是否已经被加载，检查顺序自底向上，从Custom ClassLoader到Bootstrap ClassLoader逐层检查，只要某个class Loader已加载就视为已加载此类，保证此类在所有Class Loader只加载一次，而加载的顺序写是自顶向下，也就是由上层来逐层尝试加载此类
-
-
-
-
-
-
-
-
+4）Custom ClassLoader：自定义类加载器，如tomcat，jboss都会根据j2ee规范自行实现ClassLoader，加载过程中会先检查类是否已经被加载，检查顺序自底向上，从Custom ClassLoader到Bootstrap ClassLoader逐层检查，只要某个class Loader已加载就视为已加载此类，保证此类在所有Class Loader只加载一次，而加载的顺序写是自顶向下，也就是由上层来逐层尝试加载此类
 
 
 
 ### 双亲委派机制
+
+Java虚拟机对class文采用的是按需加载的方式，也就是说当需要使用该类时才会将他的class文件加载到内存生成class对象，而且加载某个class文件时，Java默认采用的是双亲委派机制，即把请求交由父类处理
+
+工作原理：
+
+1）如果一个类加载器收到了类加载请求，他并不会自己先加载，而是把这个请求委托给父类的加载器去执行，
+
+2）如果父类加载器还存在其父类加载器，则进一步向上委托，依次递归，请求最终到达顶层的引导类加载器，
+
+
 
 
 
