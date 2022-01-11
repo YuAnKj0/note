@@ -246,31 +246,381 @@ Java虚拟机对class文采用的是按需加载的方式，也就是说当需�
 
 2）如果父类加载器还存在其父类加载器，则进一步向上委托，依次递归，请求最终到达顶层的引导类加载器，
 
-![image-20220107091450216](C:/Users/16143/AppData/Roaming/Typora/typora-user-images/image-20220107091450216.png)
+3）如果父类加载器可以完成类加载任务，就成功返回，倘若父类加载器无法完成加载任务，子加载器就会尝试自己加载，这就是双亲委派机制
+
+4）父类加载器一层一层的往下分配任务，如果子类加载器能够加载，则加载此类，如果将加载任务分配至系统类加载器也无法加载此类，则抛出异常。
+
+![双亲委派机制图示](https://img-blog.csdnimg.cn/20201018150330316.png?x-oss-process=image/watermark,type_ZmFuZ3poZW5naGVpdGk,shadow_10,text_aHR0cHM6Ly9ibG9nLmNzZG4ubmV0L3dlaXhpbl80MjgzNTIzMA==,size_16,color_FFFFFF,t_70#pic_center)
+
+双亲委派机制可以：
+
+1）避免类的重复加载
+
+2）保护程序安全，防止核心API被篡改
+
+- 自定义类：java.lang.String(没用)
+- 自定义类：java.lang.SkuStr(报错，阻止创建java.lang开头的类)
 
 
 
 ### tomcat如何打破了双亲委派机制
 
+![img](https://img2020.cnblogs.com/blog/1187916/202007/1187916-20200701044305758-214059128.png)
 
+橙色部门还是和原来一样, 采用双亲委派机制. 而黄色部分是tomcat第一部分自定义的类加载器, 这部分主要是加载tomcat包中的类, 这一部分依然采用的是双亲委派机制, 而绿色部分是tomcat第二部分自定义类加载器, 正事这一部分, 打破了类的双亲委派机制
+
+
+
+#### 1. tomcat第一部分自定义类加载器(黄色部分)
+
+这部分类加载器, 在tomcat7及以前是tomcat自定义的三个类加载器, 分别加载不同文件加载的jar包. 而到了tomcat8及以后, tomcat将这三个文件夹合并了, 合并成了一个lib包. 也就是我们现在看到的lib包
+
+- commonClassLoader: tomcat最基本的类加载器, 加载路径中的class可以被tomcat容器本身和各个webapp访问;
+- catalinaClassLoader: tomcat容器中私有的类加载器, 加载路径中的class对于webapp不可见
+- sharedClassLoader: 各个webapps共享的类加载器, 加载路径中的class对于所有的webapp都可见, 但是对于tomcat容器不可见.
+
+这一部分类加载器, 依然采用的是双亲委派机制, 原因是, 他只有一份. 如果有重复, 那么也是以这一份为准. 
+
+#### 2.tomcat第二部分自定义类加载器(绿色部分)
+
+ 绿色部分是java项目在打war包的时候, tomcat自动生成的类加载器, 也就是说 , 每一个项目打成一个war包, tomcat都会自动生成一个类加载器, 专门用来加载这个war包. 而这个类加载器打破了双亲委派机制. 我们可以想象一下, 加入这个webapp类加载器没有打破双亲委派机制会怎么样?
+
+如果没有打破, 他就会委托父类加载器去加载, 一旦加载到了, 子类加载器就没有机会在加载了. 那么, spring4和spring5的项目想共存, 那是不可能的了. 
+
+所以, 这一部分他打破了双亲委派机制
+
+ 这样一来, webapp类加载器不需要在让上级去加载, 他自己就可以加载对应war里的class文件. 当然了, 其他的项目文件, 还是要委托上级加载的. 
 
 ### 集合
 
+java 集合类存放在java.util包中，是用来存放对象的容器。
+
+注意：
+
+1. 集合只能存放对象，比如存一个int类型的数据1，其实是自动转换成Integer类型存储的，Java中每一种基本类型都有其对应的引用类型
+2. 集合存放的是多个对象啊的引用，对象本身还是放在堆中
+3. 集合可以存放不同类型，不限数量的数据类型
+
+#### 集合框架图：
+
+![Java集合关系图](C:/Users/16143/Desktop/Java%E9%9B%86%E5%90%88%E5%85%B3%E7%B3%BB%E5%9B%BE.jpg)
+
+除了map系列的集合外，左边的集合都实现了Iterator接口，这是一个用于遍历集合的接口，主要hashNext(),next(),remove(),三种方法，他的一个子接口ListIterator在他的基础上又添了三个方法，分别是add(),previous(),hasPrevious(),也就是说如果实现Iterator接口，那么在遍历集合元素的时候，只能往后遍历，被遍历后的元素不会再次遍历，通常无序集合实现的是这个接口，比如HashSet;而那些元素有序的集合，一般都实现的是ListIterator，实现这个接口的集合可以双向遍历，既可以通过next()访问下一个元素，也可以通过previous()访问前一个元素，比如ArrayList。
 
 
-### listde 底层实现
+
+1. Iterator迭代器，这是Java集合的顶层接口(不包括map系列的集合，Map是map集合的顶层接口)
+
+Object next()：返回迭代器刚越过的元素的引用，返回值是Object，需要强制转换为需要的类型。
+
+boolNext()：判断容器内是否还有可供访问的元素
+
+void remove()：删除迭代器刚越过的元素
+
+所以除了map系列的集合，我们都可以通过迭代器进行遍历集合
+
+注意：
+
+在源码中看到，在集合的顶层接口，比如Collection接口，可以看到他继承的是Iterable
+
+```java
+public Interface Iterable<T>{
+    Iterator<T> iterator();
+}
+```
+
+Iterator和Iterable的区别：
+
+在Iterable中封装了Iterator接口，只要实现了Iterable接口，就可以使用Iterator迭代器了
+
+```java
+//产生一个List集合，典型的实现为ArrayList
+List list=new ArrayList();
+//添加三个元素
+list.add("qwe");
+list.add("qwed");
+list.add("fvd");
+//构造list的迭代器
+Iterator iterator= list.iterator();
+while (iterator.hasNext())
+{
+    Object obj=iterator.next();
+    System.out.println(obj);
+}
+```
+
+2. Collection：List接口和Set接口的父接口
+
+```java
+public interface Collection<E> extends Iterable<E>{}
+```
+
+Collection集合使用：
+
+```java
+//将ArrayList作为Collection的实现类
+Collection collection=new ArrayList();
+//添加元素
+
+collection.add("gfdc");
+collection.add("efdfs");
+
+//删除指定元素
+collection.remove("gfdc");
+
+//删除指定元素
+Collection c=new ArrayList();
+c.add("qwe");
+c.removeAll(c);
+
+//检测是否存在某个元素
+c.contains("qwe");
+
+//判断是否为空
+c.isEmpty();
+
+//利用增强for循环遍历集合
+for (Object o : collection) {
+    System.out.println(o);
+}
+
+//利用迭代器
+Iterator iterator= collection.iterator();
+while (iterator.hasNext()) {
+    Object object=iterator.next();
+    System.out.println(object);
+}
+```
+
+3. #### List：有序，可重复的集合
+
+```
+public interface List<E> extends Collection<E>{}
+```
+
+1） List接口的三个典型实现：
+
+```java
+List list1 = new ArrayList();
+List list2 = new LinkedList();
+List list3 = new Vector();
+```
+
+ArrayList底层数据结构是数组，查询快，增删慢，线程不安全，效率高
+
+Vector底层数据结构是数组，查询快，增删慢，线程安全，效率低，几乎已经淘汰
+
+LinkedList底层数据结构是链表，查询慢，增删快，线程不安全，效率高
+
+2） List接口遍历还可以使用普通的for循环进行遍历，指定位置添加元素，替换元素等
+
+```java
+//产生一个List集合，典型的实现为ArrayList
+List list=new ArrayList();
+//添加三个元素
+list.add("qwe");
+list.add("qwed");
+list.add("fvd");
+//构造list的迭代器
+Iterator iterator= list.iterator();
+while (iterator.hasNext())
+{
+    Object obj=iterator.next();
+    System.out.println(obj);
+}
+
+//向指定地方添加元素
+list.add(2,0);
+//在指定地方替换元素
+list.set(2,1);
+
+//获取指定地方的索引
+int i=list.indexOf(1);
+System.out.println("索引为："+i);
+
+//遍历，普通for循环
+for (int j = 0; j < list.size(); j++) {
+    System.out.println(list.get(j));
+}
+```
+
+4. #### Set：典型实现是HashSet()是一个无序的不可重复的集合
+
+1）Set set=new HashSet();底层原理是：数组+链表+红黑树，底层是HashMap
+
+HashSet不能保证元素的顺序，不可重复，线程不是安全的 ，集合 元素可以是null。
+
+底层其实是个数组，存在的意义是加快查询速度，在一般的数组中，元素在数组中的位置是随机的，元素的取值和位置之间不存在确定关系 ，因此，在数组中查找值和一些特定的元素时，需要把查找值和一系列的元素相比较，此时的查找效率依赖于查找过程中的比较次数，而HashSet底层数组的索引和值有确定的关系，index=hash(value)，那么只要调用这个公式，就能快速找到元素或者索引。
+
+对于HashSet：如果两个对象通过eques()方法返回TRUE，这两个对象的hashcode值应该相同，
+
+1.当HashSet集合中存入一个元素时，HashSet会调用该对象的hashCode()方法来得到该对象的hashcode值，然后根据hashcode值来确定该对象在HashSet中的位置。
+
+1.1 如果hashcode值不同，	那直接将元素存到hashCode()指定的位置，
+
+1.2 如果hashCode值相同，那么会继续判断该元素和集合对象的equals()作比较，
+
+ 1.2.1 hashcode相同，equals为true，则视为同一个对象，不保存在hashSet中，
+
+ 1.2.2 hashcode相同，equals为false，则存储在之前对象同槽位的链表上，这非常麻烦，所以我们应该保证：如果两个对象通过equals方法返回true，这两个对象的hashcode值也应该相同，
+
+注意： 每个存储到哈希表中国的对象，都得提供hashCode()和equals()方法的实现，用来判断是否是同一个对象，对于hashSet集合，我们要保证如果两个对象通过equals()方法返回true，这两个对象的 hashcode值也应该相同，
+
+2. ）Set linkedHashSet = new LinkedHashSet();
+
+不可以重复，有序　　因为底层采用 链表 和 哈希表的算法。链表保证元素的添加顺序，哈希表保证元素的唯一性
+
+3) Set treeSet = new TreeSet();
+
+   TreeSet:有序；不可重复，底层使用 红黑树算法，擅长于范围查询。
+
+     * 如果使用 TreeSet() 无参数的构造器创建一个 TreeSet 对象, 则要求放入其中的元素的类必须实现 Comparable 接口所以, 在其中不能放入 null 元素
+
+     * 必须放入同样类的对象**.(默认会进行排序) 否则可能会发生类型转换异常.我们可以使用泛型来进行限制
+
+       ```java
+       Set treeSet = new TreeSet();
+           treeSet.add(1); //添加一个 Integer 类型的数据
+           treeSet.add("a");  //添加一个 String 类型的数据
+           System.out.println(treeSet);  `//会报类型转换异常的错误
+       ```
+
+自动排序：添加自定义对象的时候，必须要实现 Comparable 接口，并要覆盖 compareTo(Object obj) 方法来自定义比较规则
+
+　　　　如果 this > obj,返回正数 1
+
+　　　　如果 this < obj,返回负数 -1
+
+　　　　如果 this = obj,返回 0 ，则认为这两个对象相等
+
+   *  两个对象通过 Comparable 接口 compareTo(Object obj) 方法的返回值来比较大小, 并进行升序排列
 
 
 
-### set的底层时如何实现的
+#### Map:Map：key-value 的键值对，key 不允许重复，value可以
+
+1、严格来说 Map 并不是一个集合，而是两个集合之间 的映射关系。
+
+2、这两个集合没每一条数据通过映射关系，我们可以看成是一条数据。即 Entry(key,value）。Map 可以看成是由多个 Entry 组成。
+
+3、因为 Map 集合即没有实现于 Collection 接口，也没有实现 Iterable 接口，所以不能对 Map 集合进行 for-each 遍历。
+
+Map的常用实现类：https://blog.csdn.net/qq877728715/article/details/103029866
 
 
 
-### Map当中的CurrentHashMap是如何实现线程安全的
+<img src="https://images2015.cnblogs.com/blog/1120165/201705/1120165-20170509224035660-1080038371.png" alt="img" style="zoom: 150%;" />
 
 
+
+#### Map 和 Set 集合的关系
+
+　　　　1、都有几个类型的集合。HashMap 和 HashSet ，都采 哈希表算法；TreeMap 和 TreeSet 都采用 红-黑树算法；LinkedHashMap 和 LinkedHashSet 都采用 哈希表算法和红-黑树算法。
+
+　　　　2、分析 Set 的底层源码，我们可以看到，Set 集合 就是 由 Map 集合的 Key 组成。
+
+
+
+### Map当中的ConcurrentHashMap是如何实现线程安全的
+
+1. HashTable之所以效率低下是因为其实现使用了synchronized关键字对于put等操作进行加锁，而synchronized关键字加锁是对整个对象进行加锁，也就是说在进行put等修改哈希表的操作时，锁住了整个哈希表，从而使得其表现的效率低下，因此在jdk1,5~1，7版本，Java使用了分段锁机制实现ConcurrentHashMap
+2. ConcurrentHashMap在对象中保存了一个Segment数组，默认长度为16，即将整个哈希表分为多个分段，而每个Segment元素，即每个分段类似于一个hashtable，这样在执行put操作时，首先根据
 
 ### 创建线程的四种方式
+
+#### 1. 继承Thread类创建线程
+
+```java
+public class Demo extends Thread{ //继承Thread
+        String name;
+        Demo(String name){
+            this.name=name;
+        }
+        //复写其中的run方法
+        @Override
+        public void run(){
+            for (int i = 0; i <= 20; i++) {
+                System.out.println("name="+name+",i="+i);
+            }
+        }
+        class ThreadDemo{
+            public static void main(String[] args) {
+                //创建两个线程任务
+                Demo d1=new Demo("ewre");
+                Demo d2=new Demo("wqerrwreewr");
+//                d1.run();
+//                d2.run(); //主线程调用run方法，并没有开启两个线程
+                d2.start(); //开启一个线程
+                d1.start(); //主线程在调用run方法
+            }
+
+        }
+```
+
+原理：建立单独的路径，让部分代码实现同时执行。需要重写run方法
+
+#### 2. 实现Runnable接口
+
+2.1 定义类实现Runnable接口
+
+2.2 覆盖接口中的run方法
+
+2.3 创建Thread类对象
+
+2.4 将Runnable 接口的子类对象作为参数传递给Thread类的构造函数
+
+2.5 调用Thread类的start方法开启线程
+
+```java
+class Demo implements  Runnable{
+
+    private String name;
+    Demo(String name){
+        this.name=name;
+    }
+
+    @Override
+    public void run() {
+        for (int i = 0; i <=20; i++) {
+            System.out.println("name="+name+"_______"+Thread.currentThread().getName()+"___________"+i);
+        }
+    }
+}
+public class ThreadDemo2 {
+    public static void main(String[] args) {
+        Demo d=new Demo("Demo");
+        Thread t1=new Thread(d);
+        Thread t2=new Thread(d);
+        t1.start();
+        t2.start();
+        System.out.println(Thread.currentThread().getName()+"-------------------->");
+        System.out.println("Helle World");
+    }
+```
+
+原理：避免了Thread类单继承的局限性，覆盖Runnable接口的run方法，将线程任务代码定义到run方法中，创建Thread类的对象，只有创建Thread类的对象才可以创建线程
+
+
+
+
+
+#### 3.  使用Callable和Future创建线程
+
+
+
+
+
+
+
+#### 4.  使用线程池创建(使用java.util,concurrent.Executor接口)
+
+
+
+
+
+
+
+
 
 
 
