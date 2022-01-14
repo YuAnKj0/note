@@ -598,7 +598,201 @@ public class ThreadDemo2 {
     }
 ```
 
-原理：避免了Thread类单继承的局限性，覆盖Runnable接口的run方法，将线程任务代码定义到run方法中，创建Thread类的对象，只有创建Thread类的对象才可以创建线程
+原理：避免了Thread类单继承的局限性，覆盖Runnable接口的run方法，将线程任务代码定义到run方法中，创建Thread类的对象，只有创建Thread类的对象才可以创建线程，线程任务已经被封装到Runnable接口的run方法中，而这个run方法所属于Runnable接口的子类对象，所以将这个子类对象作为参数传递给Thread类的构造函数，这样，线程创建时就可以明确要运行的线程的任务
+
+好处：实现Runnable的方式，更加的符合面向对象，线程分为两部分，一部分是线程任务，一部分是线程对象
+继承Thread类，线程对象和线程任务耦合再一起，创建线程任务时又创建了线程对象，
+
+实现Runnable接口：将线程任务单独分离出来封装成对象，类型就是Runnable接口类型，Runnable接口对线程任务和线程对象进行解耦
+
+
+
+多线程内存图解：
+
+![在这里插入图片描述](https://img-blog.csdnimg.cn/20200803232509132.png?x-oss-process=image/watermark,type_ZmFuZ3poZW5naGVpdGk,shadow_10,text_aHR0cHM6Ly9ibG9nLmNzZG4ubmV0L3FxXzQ1OTAxNzQx,size_16,color_FFFFFF,t_70#pic_center)
+
+Thread.currentThread()：获取当前线程对象
+
+Thread.currentThread().getName()：获取当前线程对象的名称
+
+多线程的异常只会影响异常所属的那个线程
+
+线程安全问题产生的原因：a.线程任务中操作共享的数据    b.线程任务操作共享数据的代码有多条（共享资源弊端隐患）
+
+解决共享的资源：让一个线程在执行线程任务时将操作多条共享数据的代码执行完，在执行过程中，不让其他线程参与运算，Java中提供了synchronized代码块标识其作为一个同步代码块。
+
+### synchronized关键字
+
+synchronized使用时，需要一个对象作为标记，当任何线程进入synchronized这个标记的代码块时，首先会判断线程有没有使用synchronized标记对象，若有线程使用这个对象，那么这个线程就在synchronized外面等着，直到获取到这个标记对象后，这个线程才能执行同步代码块
+
+```java
+class Ticket implements Runnable
+{
+	//1、描述票的数量。
+	private int tickets = 100;
+	//2、售票的动作，这个动作需要被多线程执行，那就是线程任务代码。需要定义run方法中。
+	//定义同步代码块的标记对象。相当与锁的功能
+	private Object obj = new Object();
+	public void run()
+	{
+		//线程任务中通常都有循环结构。
+		while(true)
+		{
+			//使用同步代码块解决线程安全问题。
+			synchronized(obj)
+			{
+				if(tickets>0)
+				{	//由于run方法是复写接口中的，run方法没有抛出异常， 此时这里只能捕获异常，而不能抛出
+					//让线程在此冻结10毫秒
+					try{
+						Thread.sleep(10);
+						}catch(InterruptedException e){/*异常处理代码*/}
+					System.out.println(Thread.currentThread().getName()+"....."+tickets--);//打印线程名称。
+				}
+			}
+		}
+	}
+}
+class ThreadDemo3 
+{
+	public static void main(String[] args) 
+	{
+		//1,创建Runnable接口的子类对象。
+		Ticket t = new Ticket();
+
+		//2,创建四个线程对象。并将Runnable接口的子类对象作为参数传递给Thread的构造函数。
+		Thread t1 = new Thread(t);
+		Thread t2 = new Thread(t);
+		Thread t3 = new Thread(t);
+		Thread t4 = new Thread(t);
+
+		//3,开启四个线程。
+		t1.start();
+		t2.start();
+		t3.start();
+		t4.start();
+	}
+}
+
+```
+
+
+
+1.同步的好处和弊端：
+
+好处：解决线程安全问题
+
+弊端：降低了程序的性能，每个线程都需要判断锁机制，会增加程序运行负担，增加CPU压力
+
+２.同步的前提：
+
+当线程任务代码会被多个线程执行时，这时需要加同步，但是加同步时，**一定要保证多个线程使用的是同一把锁**
+
+3.同步代码块使用的锁可以是任意对象的，因为synchronized对象可以我们自己指定
+
+4.同步函数锁，函数是需要调用对象去使用的，则同步函数中使用的锁就是当前调用这个方法的对象，this锁
+
+5.同步代码块和同步函数锁的区别
+
+同步函数使用的锁是固定的this ,当线程任务只需要一个同步时，完全可以使用同步函数
+
+同步代码块使用的锁可以是任意对象，当线程中需要多个同步时，必须通过锁来区分，这是必须使用同步代码块，
+
+多线程单例懒汉式的并发问题
+
+```java
+class Single
+{
+	private static  Single s = null;
+	private Single(){}
+	/*
+	并发访问会有安全隐患，所以加入同步机制解决安全问题。
+	但是，同步的出现降低了效率。
+	可以通过双重判断的方式，解决效率问题，减少判断锁的次数。
+	*/
+	public static Single getInstance()
+	{
+		if(s==null)
+		{
+			synchronized(Single.class)//-->B线程，等着A解锁才让进去
+			{
+				if(s==null) s = new Single();
+			}
+		}
+		return s;
+	}
+}
+
+```
+
+懒汉模式是延迟加载的实例，面对多线程访问时，需要进行同步代码块，为了增加效率，又要使用双重判断
+
+如果没有第一个if ,那么多线程访问时，每个线程都需要去判断锁，而双重判断模式下，更多机会只需要判断if条件，相比较判断锁更有效率
+
+死锁：
+
+当线程任务中出现了多个同步（多个锁）时，如果同步中嵌套了其他的同步，这是容易引发死锁
+
+#### 死锁经典代码：
+
+```java
+class Text implements Runabble{
+	private boolean flag ;
+	Test(boolean flag)
+	{
+		this.flag = flag;
+	}
+	public void run()
+	{
+		if(flag)
+		{
+			synchronized(MyLock.LOCKA)
+			{
+				System.out.println(Thread.currentThread().getName()+"...if...MyLock.LOCKA");
+				synchronized(MyLock.LOCKA)
+				{
+					System.out.println(Thread.currentThread().getName()+"...if...MyLock.LOCKB");
+				}
+			}
+		}
+		else
+		{
+			synchronized(MyLock.LOCKB)
+			{
+				System.out.println(Thread.currentThread().getName()+"...if...MyLock.LOCKB");
+				synchronized(MyLock.LOCKA)
+				{
+					System.out.println(Thread.currentThread().getName()+"...if...MyLock.LOCKA");
+				}
+			}
+		}
+
+	}
+}
+//单独描述锁对象
+class MyLock
+{
+	public static final MyLock LOCKA = new MyLock();
+	public static final MyLock LOCKB = new MyLock();
+}
+class DeadThread 
+{
+	public static void main(String[] args) 
+	{
+		Test t1 = new Test(true);
+		Test t2 = new Test(false);
+		Thread t11 = new Thread(t1);
+		Thread t22 = new Thread(t2);
+		t11.start();
+		t22.start();
+	}
+}
+
+```
+
+#### 死锁产生的条件和解决方案
+
+
 
 
 
