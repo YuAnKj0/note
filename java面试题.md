@@ -792,17 +792,367 @@ class DeadThread
 
 #### 死锁产生的条件和解决方案
 
+1)竞争不可抢占性资源
 
+如上述例子中，LockA想去打开LockB，LockB又想去打开LockA，但是LockA和LockB都是不可抢占的，这是发生死锁。
 
+2)竞争可消耗资源引起死锁
 
+进程间通信，如果顺序不当，会产生死锁，比如p1发消息m1给p2，p1接收p3的消息m3，p2接收p1的m1，发m2给p3，p3，以此类推，如果进程之间是先发信息的那么可以完成通信，但是如果是先接收信息就会产生死锁。
 
+3)进程推进顺序不当
 
+进程在运行过程中，请求和释放资源的顺序不当，也同样会导致产生进程死锁。
+　　
+死锁产生的必要条件：
+
+产生死锁必须同时满足以下四个条件，只要其中任一条件不成立，死锁就不会发生。
+
+1、互斥条件：进程要求对所分配的资源（如打印机）进行排他性控制，即在一段时间内某 资源仅为一个进程所占有。此时若有其他进程请求该资源，则请求进程只能等待。
+
+2、不剥夺条件：进程所获得的资源在未使用完毕之前，不能被其他进程强行夺走，即只能 由获得该资源的进程自己来释放（只能是主动释放)。
+
+3、请求和保持条件：进程已经保持了至少一个资源，但又提出了新的资源请求，而该资源 已被其他进程占有，此时请求进程被阻塞，但对自己已获得的资源保持不放。
+
+4、循环等待条件
+
+死锁解决办法：
+
+1、加锁顺序（线程按照一定的顺序加锁）
+
+2、加锁时限（线程尝试获取锁的时候加上一定的时限，超过时限则放弃对该锁的请求，并释放自己所占的锁）
+
+3、死锁检测
+
+​	步骤一：每个进程，每个资源制定唯一编号
+
+​	步骤二：设定资源分配表，记录进程与所占资源之间的关系
+
+​	步骤三：设置进程等待表，记录进程与要申请资源之间的关系
+
+### 生产者和消费者
+
+处理同一资源，而处理的方式不同，生产者和消费者同时执行，需要多线程，但是执行的任务不同，处理的资源却是相同的：线程间的通信
+
+思路:
+
+​	1、描述处理的资源
+
+​	2、描述生产者，具备着生产的任务
+
+​	3、描述消费者，具备着消费的任务
+
+等待唤醒机制
+
+为解决连续生产不消费，或者同一个商品多次消费，引入该机制
+
+生产者生产了商品后应该告诉消费者来消费，这时的生产者应该处于等待状态，消费者消费了商品后，应该告诉生产者，这时消费者处于等待状态
+
+wait()：会让线程处于等待状态，其实就是将线程放在了线程池中，
+
+notify()：唤醒线程池中任意一个等待的线程
+
+notifyAll()：唤醒线程池中所有等待线程
+
+​		这些方法必须使用在同步中，因为必须要标识wait，notify等方法，所属的锁。同一个锁上的notify，只能唤醒该锁上的被wait的线程。
+
+为什么这些方法定义在Object类中
+
+因为这些方法必须标识所属的锁，而锁可以是任意对象，任意对象调用的方法必然是Object类中的方法。
+
+```java
+package com.note.refrence;
+import java.util.Properties;
+
+/**
+ * @author Ykj
+ * @ClassName ThreadDemo3
+ * @Discription
+ * @date 2022/1/17 9:05
+ */
+
+//描述资源，属性：商品名和编号    行为：对商品名进行赋值，获取商品
+class Resource{
+    private String name;
+    private int count=1;
+    private boolean flag=false;
+
+    //设置对外提供的设置商品的方法
+    public synchronized void set(String name){
+        while (flag){
+            try {
+                wait();
+
+            }catch (InterruptedException e){}
+        }
+        this.name=name+count;
+        count++;
+        System.out.println(Thread.currentThread().getName()+"............生产者......."+this.name);
+        //将标记改为true
+        flag=true;
+        //唤醒消费者
+        this.notifyAll();
+    }
+
+    public synchronized void get(){
+        while (!flag){
+            try {
+                wait();
+
+            }catch (InterruptedException e){}
+        }
+        System.out.println(Thread.currentThread().getName()+"............消费者......."+this.name);
+        //将标记改为true
+        flag=false;
+        //唤醒消费者
+        this.notifyAll();
+    }
+
+}
+//描述生产者
+class Producer implements Runnable{
+    private Resource r;
+    Producer(Resource r){
+        this.r=r;
+    }
+
+    @Override
+    public void run() {
+        while (true){
+            r.set("面包");
+        }
+    }
+}
+//描述消费者
+class Consumer implements Runnable{
+
+    private Resource r;
+    Consumer(Resource r){
+        this.r=r;
+    };
+    //生产者生产商品的任务
+    @Override
+    public void run() {
+
+        while (true){
+            r.get();
+        }
+    }
+}
+public class ThreadDemo3 {
+    public static void main(String[] args) {
+        //创建资源对象
+        Resource resource=new Resource();
+        //创建生产者对象
+        Producer producer=new Producer(resource);
+        //创建消费者对象
+        Consumer consumer=new Consumer(resource);
+        //创建线程对象
+        Thread producerThread=new Thread(producer);
+        Thread consumerThread=new Thread(consumer);
+        //开启线程
+        producerThread.start();
+        consumerThread.start();
+        System.out.println("hello world");
+    }
+}
+```
+
+注意：多生产多消费，必须循环while条件，但是使用了while会死锁，不能唤醒对方，为了唤醒，没有对应的方法，只能唤醒所有
 
 #### 3.  使用Callable和Future创建线程
 
+和Runnable接口不一样，Callable接口提供了一个call方法作为线程执行体，call方法比run方法要强大，其表现在
+
+1、call方法可以有返回值
+
+2、call方法可以申明抛出异常
+
+Java5提供了Future接口来代表Callable接口里call方法的返回值，并且为Future接口提供了实现类FutureTask，这个类既实现了Future接口，也实现了Runnable接口，因此可以作为Thread类的target。
+
+##### 创建并启动有返回值的线程的步骤如下：
+
+1）创建Callable接口的实现类，并实现call方法，然后创建该实现类的实例（从Java8开始就是用Lambda表达式创建callable对象）
+
+2）使用FutureTask类来包装Callable对象，该FutureTask对象封装了Callable对象的call()方法的返回值。
+
+3）使用FutureTask对象作为Thread对象的target创建并启动线程（因为FutureTask实现了Runnable接口）
+
+4）调用FutureTask对象的get方法获得子线程执行结束后的返回值
+
+```java
+public class MyThread implements Callable<String>{//Callable是一个泛型接口
+ 
+	@Override
+	public String call() throws Exception {//返回的类型就是传递过来的V类型
+		for(int i=0;i<10;i++){
+			System.out.println(Thread.currentThread().getName()+" : "+i);
+		}
+		
+		return "Hello Tom";
+	}
+	public static void main(String[] args) throws Exception {
+		MyThread myThread=new MyThread();
+		FutureTask<String> futureTask=new FutureTask<>(myThread);
+		Thread t1=new Thread(futureTask,"线程1");
+		Thread t2=new Thread(futureTask,"线程2");
+		Thread t3=new Thread(futureTask,"线程3");
+		t1.start();
+		t2.start();
+		t3.start();
+		System.out.println(futureTask.get());
+		
+	}
+}
+
+```
+
+FutureTask 适用于耗时的计算，主线程可以在完成自己的任务后，再去获取结果，FutureTask可以保证即使调用了多次run方法，他都会执行一次Runnable或者Callable任务，或者通过cancel取消FutureTask的执行等
+
+线程池：
+
+线程有五种状态：
+
+NEW状态(初始化状态)：实例化一个Thread对象出来（未执行start()方法前）Thread的状态为NEW
+
+RUNNABLE(可运行)状态：调用线程的start()方法，此时线程进入RUNNABLE状态，该状态的线程位于可运行线程池中，等待被操作系统调度，获取CPU的使用权，当获得CPU的时间片时，线程进入运行状态，执行程序代码
+
+BLOCKED(阻塞)状态：当线程等待获取monitor锁（synchronized）时，线程就会进入BLOCKED状态，等待获取monitor锁，线程的状态时BLOCKED，等待获取Lock锁(LockSupport.park())，线程的状态是WAITING。
+
+TIMED_WAITING(超时等待)状态：当执行
+
+```java
+Thread.sleep(time)
+Thread.join(time)
+Object.wait(time)
+LockSupport.parkNanos(time)
+LockSupport.partUntil(time)
+```
+
+等操作时，线程进入TIMED_WAITING状态
+
+当执行超时时间到
+
+```java
+Thread.join() 线程执行完
+Object.notify()
+notifyAll()
+LockSupport.unpark()
+```
+
+线程被中断操作时，线程会从TIMED_WAITING状态转到RUNNABLE状态
+
+WAITING(等待)状态：当执行Object.wait()、Thread.join()、LockSupport.unpark()，线程被中断操作时，线程会从RUNNABLE状态进入到WAITING状态，当执行Object.notify()/notifyAll()、Thread.join()程序执行完、LockSupport.unpark()、线程被中断等操作时，线程会从WAITING状态进入RUNNABLE状态。
+
+TERMINATED(终止)状态：当线程执行完毕、Thread.stop()、内存溢出时，线程就会进入TERMINATED状态，线程一旦死亡，就无法复活，在一个死亡的线程上调用start方法，会抛出java.lang.IllegalThreadStateException异常
+
+分别对应操作系统进程（线程）的五种状态：
+
+![在这里插入图片描述](https://img-blog.csdnimg.cn/20210401230053496.png?x-oss-process=image/watermark,type_ZmFuZ3poZW5naGVpdGk,shadow_10,text_aHR0cHM6Ly9ibG9nLmNzZG4ubmV0L3FxXzQ1OTAxNzQx,size_16,color_FFFFFF,t_70)
+
+Thread类中有个内部枚举类描述这六种状态
+
+```java
+public enum State {
+        NEW,
+        RUNNABLE,
+        BLOCKED,
+        WAITING,
+        TIMED_WAITING,
+        TERMINATED;
+    }
+```
+
+java中涉及到线程池的相关类在jdk1.5开始的java.util.concurrent包中，涉及到的几个核心类包括Executor、Executors、ExecutorService、ThreadPoolExecutor、FutureTask、Callable、Runnable等
+
+代码比较(https://blog.csdn.net/qq_45901741/article/details/113752400?spm=1001.2014.3001.5501)
+
+```java
+public class PuTongXianCheng {
+    public static void main(String[] args) throws Exception {
+       	//计时
+        Long start = System.currentTimeMillis();
+		//生成随机数
+        Random random = new Random();
+        List list = new ArrayList();
+
+        for (int i = 0;i <= 100000;i++){
+        	
+            Thread thread = new Thread(){
+            	//创建线程
+                @Override
+                public void run() {
+                    list.add(random.nextInt());
+                }
+            };
+            //线程运行
+            thread.start();
+            thread.join();
+        }
+        System.out.println("时间:"+(System.currentTimeMillis() - start));
+        System.out.println("list = "+list.size());
+    }
+}
+```
+
+代码运行时间为
+
+![在这里插入图片描述](https://img-blog.csdnimg.cn/20210401230859152.JPG?x-oss-process=image/watermark,type_ZmFuZ3poZW5naGVpdGk,shadow_10,text_aHR0cHM6Ly9ibG9nLmNzZG4ubmV0L3FxXzQ1OTAxNzQx,size_16,color_FFFFFF,t_70#pic_center)
 
 
 
+```java
+public static void main(String[] args) throws Exception {
+        Long start = System.currentTimeMillis();
+
+        Random random = new Random();
+        List list = new ArrayList();
+
+        //创建线程池
+        ExecutorService service = Executors.newSingleThreadExecutor();
+        for (int i = 0;i <= 100000;i++){
+            service.execute(
+                    new Thread(){
+                        @Override
+                        public void run() {
+                            list.add(random.nextInt());
+                        }
+                    }
+            );
+        }
+        service.shutdown();
+        service.awaitTermination(1, TimeUnit.DAYS);
+
+        System.out.println("时间:"+(System.currentTimeMillis() - start));
+        System.out.println("list = "+list.size());
+    }
+
+```
+
+运行时间为：
+
+![在这里插入图片描述](https://img-blog.csdnimg.cn/20210401230958863.JPG?x-oss-process=image/watermark,type_ZmFuZ3poZW5naGVpdGk,shadow_10,text_aHR0cHM6Ly9ibG9nLmNzZG4ubmV0L3FxXzQ1OTAxNzQx,size_16,color_FFFFFF,t_70#pic_center)
+
+线程池的创建：
+
+线程池可以自动创建，也可以手动创建
+
+1、自动创建体现在Executors工具类中，常见的可以i创建newFixedThreadPool、newCachedThreadPool、newSingleThreadExecutor
+
+```java
+public static ExecutorService newFixedThreadPool(int var0) {
+        return new ThreadPoolExecutor(var0, var0, 0L, TimeUnit.MILLISECONDS, new LinkedBlockingQueue());
+  }
+	
+  public static ExecutorService newSingleThreadExecutor() {
+        return new Executors.FinalizableDelegatedExecutorService(new ThreadPoolExecutor(1, 1, 0L, TimeUnit.MILLISECONDS, new LinkedBlockingQueue()));
+  }
+ 
+  public static ExecutorService newCachedThreadPool() {
+        return new ThreadPoolExecutor(0, 2147483647, 60L, TimeUnit.SECONDS, new SynchronousQueue());
+  }
+
+```
 
 
 
