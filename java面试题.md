@@ -621,7 +621,7 @@ Thread.currentThread().getName()：获取当前线程对象的名称
 
 解决共享的资源：让一个线程在执行线程任务时将操作多条共享数据的代码执行完，在执行过程中，不让其他线程参与运算，Java中提供了synchronized代码块标识其作为一个同步代码块。
 
-### synchronized关键字
+##### synchronized关键字
 
 synchronized使用时，需要一个对象作为标记，当任何线程进入synchronized这个标记的代码块时，首先会判断线程有没有使用synchronized标记对象，若有线程使用这个对象，那么这个线程就在synchronized外面等着，直到获取到这个标记对象后，这个线程才能执行同步代码块
 
@@ -733,7 +733,7 @@ class Single
 
 当线程任务中出现了多个同步（多个锁）时，如果同步中嵌套了其他的同步，这是容易引发死锁
 
-#### 死锁经典代码：
+##### 死锁经典代码：
 
 ```java
 class Text implements Runabble{
@@ -790,7 +790,7 @@ class DeadThread
 
 ```
 
-#### 死锁产生的条件和解决方案
+##### 死锁产生的条件和解决方案
 
 1)竞争不可抢占性资源
 
@@ -830,7 +830,7 @@ class DeadThread
 
 ​	步骤三：设置进程等待表，记录进程与要申请资源之间的关系
 
-### 生产者和消费者
+##### 生产者和消费者
 
 处理同一资源，而处理的方式不同，生产者和消费者同时执行，需要多线程，但是执行的任务不同，处理的资源却是相同的：线程间的通信
 
@@ -1046,9 +1046,11 @@ WAITING(等待)状态：当执行Object.wait()、Thread.join()、LockSupport.unp
 
 TERMINATED(终止)状态：当线程执行完毕、Thread.stop()、内存溢出时，线程就会进入TERMINATED状态，线程一旦死亡，就无法复活，在一个死亡的线程上调用start方法，会抛出java.lang.IllegalThreadStateException异常
 
-分别对应操作系统进程（线程）的五种状态：
+分别对应操作系统进程（线程）的五种状态：新建（new Thread）、就绪（runnable）、运行（running）、终止（dead）、阻塞（blocked）
 
 ![在这里插入图片描述](https://img-blog.csdnimg.cn/20210401230053496.png?x-oss-process=image/watermark,type_ZmFuZ3poZW5naGVpdGk,shadow_10,text_aHR0cHM6Ly9ibG9nLmNzZG4ubmV0L3FxXzQ1OTAxNzQx,size_16,color_FFFFFF,t_70)
+
+![img](https://img-blog.csdn.net/20180601075651365?watermark/2/text/aHR0cHM6Ly9ibG9nLmNzZG4ubmV0L3FxXzMyOTM5Njc5/font/5a6L5L2T/fontsize/400/fill/I0JBQkFCMA==/dissolve/70)
 
 Thread类中有个内部枚举类描述这六种状态
 
@@ -1154,47 +1156,595 @@ public static ExecutorService newFixedThreadPool(int var0) {
 
 ```
 
+2、手动创建主要使用ThreadPoolExecutor类，体现在可以灵活设置线程的各个参数，体现在代码中即ThreadPoolExecutor类构造器上各个实参的不同
+
+```java
+public ThreadPoolExecutor(int corePoolSize,
+                           int maximumPoolSize,
+                           long keepAliveTime,
+                           TimeUnit unit,
+                           BlockingQueue<Runnable> workQueue,
+                           ThreadFactory threadFactory,
+                          RejectedExecutionHandler handler) 
+
+```
+
+3、ThreadPoolExecutor重要参数：
+
+**`corePoolSize`**：核心线程数，也就是线程池中常驻的线程数，线程池初始化是没有线程的，当任务来临时才开始创建线程去执行任务
+
+**`maximumPoolSize`**：最大线程数在核心线程数的基础上可能会额外增加一些非核心线程，需要注意的是只有当workQueue队列填满时才会创建多于corePoolSize的线程
+
+**`keepAliveTime`**：非核心线程的空闲时间超过keepAliveTime就会被自动终止回收掉，注意当corePoolSize=maxPoolSize时，keepAliveTime参数也就不起作用了（因为不存在核心线程）
+
+**`unit`**：keepAliveTime的时间单位
+
+**`workQueue`**：用于保存任务的队列，可以为无界，有界、同步移交三种队列类型之一，当池子里的工作线程数大于corePoolSize时，这时新进来的队列就会被放在队列中
+
+**`threadFactory`**：创建线程的工厂类，默认使用Executors.defaultThreadFactory()，也可以使用guava库的ThreadFactoryBuilder来创建
+
+**`handler`**：线程池无法继续接收任务(队列已满且线程数达到	)时的饱和策略，取值有AbortPolicy、CallerRunsPolicy、DiscardOldestPolicy、DiscardPolicy
+
+#### 4.线程池中线程的创建流程
+
+![在这里插入图片描述](https://img-blog.csdnimg.cn/20210401234204561.JPG?x-oss-process=image/watermark,type_ZmFuZ3poZW5naGVpdGk,shadow_10,text_aHR0cHM6Ly9ibG9nLmNzZG4ubmV0L3FxXzQ1OTAxNzQx,size_16,color_FFFFFF,t_70#pic_center)
+
+##### 线程池的拒绝策略
+
+前提：所有的拒绝策略都实现了接口RejectedExecutionHandler
+
+```java
+public interface RejectedExecutionHandler {
+
+    /**
+     * @param r the runnable task requested to be executed
+     * @param executor the executor attempting to execute this task
+     * @throws RejectedExecutionException if there is no remedy
+     */
+    void rejectedExecution(Runnable r, ThreadPoolExecutor executor);
+}
+
+```
+
+这个接口只有一个rejectedExecution方法，r 为待执行任务，executor 为线程池
+
+当线程池的任务队列已满并且线程池中线程的数量达到maximumPoolSize时，如果还有任务到来时就会采取拒绝策略，通常有以下四种策略
+
+**ThreadPoolExecutor.AbortPolicy：**丢弃任务并抛出RejectedExecutionException异常，也是线程池的默认拒绝策略
+
+```java
+private static final RejectedExecutionHandler defaultHandler = new AbortPolicy();
+```
+
+如果是比较关键的业务，推荐使用此拒绝策略，这样子在系统不能承载更大的并发量的时候，能够及时的通过异常发现。但是会中断调用者的处理过程，所以除非有明确需求，一般不推荐。
+
+**ThreadPoolExecutor.DiscardPolicy：**丢弃任务，但是不抛出异常，如果线程队列已满，则后续提交的任务都会被丢弃，且是静默丢弃。
+使用此策略，可能会使我们无法发现系统的异常状态。建议是一些无关紧要的业务采用此策略。
+
+**ThreadPoolExecutor.DiscardOldestPolicy**：丢弃队列最前面的任务，然后重新提交被拒绝的任务。
+此拒绝策略，是一种喜新厌旧的拒绝策略。是否要采用此种拒绝策略，还得根据实际业务是否允许丢弃老任务来认真衡量。
+
+**ThreadPoolExecutor.CallerRunsPolicy**：由调用线程（提交任务的线程）处理该任务
+
+##### 四种创建线程的方法对比：
+
+实现Runnable和Callable接口的方法基本相同，不过是后者的执行有返回值，后者线程执行体run()方法无返回值，并且如果使用FutureTask类的话只执行一次Callable任务
+
+这张方式与继承Thread类的方法之间的区别如下：
+
+1、线程只是实现Runnable或者Callable接口，还可以继承其他类
+
+2、这个方式下，多个线程可以共享一个target对象，非常适合多线程处理同一资源的场景
+
+3、继承Thread类只需要this关键字就能获取当前线程，不需要使用Thread.currentThread()方法
+
+4、继承Thread类的线程类不能继承其他父类（Java单继承决定）
+
+5、前三种的线程如果创建关闭频繁会影响系统资源和性能，而使用线程池可以在不使用线程时将线程放回线程池，用的时候再从线程池提取，项目开发中只要用线程池创建多个线程
+
+6、实现接口的创建方式必须实现方法（run()/call()）
+
+### 如何终止线程：
+
+1. 使用退出标志，使线程正常退出，也就是当run方法完成后线程终止。
+2. 使用stop方法强行终止，但是不推荐这个方法，因为stop和suspend及resume一样都是过期作废的方法。
+3. 使用interrupt方法中断线程。
+
+##### 1. 停止不了的线程
+
+interrupt()方法的使用效果并不像for+break语句那样，马上就停止循环。调用interrupt方法是在当前线程中打了一个停止标志，并不是真的停止线程。
+
+```java
+public class MyThread extends Thread {
+    public void run(){
+        super.run();
+        for(int i=0; i<500000; i++){
+            System.out.println("i="+(i+1));
+        }
+    }
+}
+
+public class Run {
+    public static void main(String args[]){
+        Thread thread = new MyThread();
+        thread.start();
+        try {
+            Thread.sleep(2000);
+            thread.interrupt();
+        } catch (InterruptedException e) {
+            e.printStackTrace();
+        }
+    }
+}
+
+```
+
+输出结果：
+
+```java
+...
+i=499994
+i=499995
+i=499996
+i=499997
+i=499998
+i=499999
+i=500000
+
+```
 
 
-#### 4.  使用线程池创建(使用java.util,concurrent.Executor接口)
+
+##### 2. 判断线程是否停止状态
+
+Thread.java类中提供了两种方法：
+
+1. this.interrupted(): 测试当前线程是否已经中断；
+2. this.isInterrupted(): 测试线程是否已经中断；
+
+this.interrupted()方法的解释：测试当前线程是否已经中断，当前线程是指运行this.interrupted()方法的线程。
+
+```java
+public class MyThread extends Thread {
+    public void run(){
+        super.run();
+        for(int i=0; i<500000; i++){
+            i++;
+//            System.out.println("i="+(i+1));
+        }
+    }
+}
+
+public class Run {
+    public static void main(String args[]){
+        Thread thread = new MyThread();
+        thread.start();
+        try {
+            Thread.sleep(2000);
+            thread.interrupt();
+
+            System.out.println("stop 1??" + thread.interrupted());
+            System.out.println("stop 2??" + thread.interrupted());
+        } catch (InterruptedException e) {
+            e.printStackTrace();
+        }
+    }
+}
+
+```
+
+运行结果:
+
+```java
+stop 1??false
+stop 2??false
+```
+
+类Run.java中虽然是在thread对象上调用以下代码：thread.interrupt(), 后面又使用
+
+```java
+System.out.println("stop 1??" + thread.interrupted());
+System.out.println("stop 2??" + thread.interrupted());  
+```
+
+来判断thread对象所代表的线程是否停止，但从控制台打印的结果来看，线程并未停止，这也证明了interrupted()方法的解释，测试当前线程是否已经中断。这个当前线程是main，它从未中断过，所以打印的结果是两个false.
+
+```java
+public class Run2 {
+    public static void main(String args[]){
+        Thread.currentThread().interrupt();
+        System.out.println("stop 1??" + Thread.interrupted());
+        System.out.println("stop 2??" + Thread.interrupted());
+
+        System.out.println("End");
+    }
+}    
+```
+
+运行结果：
+
+```java
+stop 1??true
+stop 2??false
+End
+```
+
+方法interrupted()的确判断出当前线程是否是停止状态。但为什么第2个布尔值是false呢？ 官方帮助文档中对interrupted方法的解释：
+**测试当前线程是否已经中断。线程的中断状态由该方法清除。** 换句话说，如果连续两次调用该方法，则第二次调用返回false。
+
+下面来看一下isInterrupted()方法。
+
+```java
+public class Run3 {
+    public static void main(String args[]){
+        Thread thread = new MyThread();
+        thread.start();
+        thread.interrupt();
+        System.out.println("stop 1??" + thread.isInterrupted());
+        System.out.println("stop 2??" + thread.isInterrupted());
+    }
+}
+```
+
+运行结果：
+
+```java
+stop 1??true
+stop 2??true
+```
+
+isInterrupted()并为清除状态，所以打印了两个true。
+
+##### 3. 能停止的线程--异常法
+
+在线程中用for语句来判断一下线程是否是停止状态，如果是停止状态，则后面的代码不再运行即可：
+
+```java
+public class MyThread extends Thread {
+    public void run(){
+        super.run();
+        for(int i=0; i<500000; i++){
+            if(this.interrupted()) {
+                System.out.println("线程已经终止， for循环不再执行");
+                break;
+            }
+            System.out.println("i="+(i+1));
+        }
+    }
+}
+
+public class Run {
+    public static void main(String args[]){
+        Thread thread = new MyThread();
+        thread.start();
+        try {
+            Thread.sleep(2000);
+            thread.interrupt();
+        } catch (InterruptedException e) {
+            e.printStackTrace();
+        }
+    }
+}
+
+```
+
+运行结果：
+
+```java
+...
+i=202053
+i=202054
+i=202055
+i=202056
+线程已经终止， for循环不再执行
+```
+
+上面的示例虽然停止了线程，但如果for语句下面还有语句，还是会继续运行的。看下面的例子：
+
+```java
+public class MyThread extends Thread {
+    public void run(){
+        super.run();
+        for(int i=0; i<500000; i++){
+            if(this.interrupted()) {
+                System.out.println("线程已经终止， for循环不再执行");
+                break;
+            }
+            System.out.println("i="+(i+1));
+        }
+
+        System.out.println("这是for循环外面的语句，也会被执行");
+    }
+}
+
+```
+
+执行结果：
+
+```java
+...
+i=180136
+i=180137
+i=180138
+i=180139
+线程已经终止， for循环不再执行
+这是for循环外面的语句，也会被执行
+```
+
+***此处赶时间，为后续学习使用https://www.cnblogs.com/greta/p/5624839.html***
 
 
 
+### sleep和wait的区别，
 
+1、这两个方法来自**不同的类**分别是，sleep来自Thread类，和wait来自Object类。
 
+sleep是Thread的静态类方法，谁调用的谁去睡觉，即使在a线程里调用了b的sleep方法，实际上还是a去睡觉，要让b线程睡觉要在b的代码中调用sleep。
+2、**最主要**是sleep方法没有**释放锁**，而wait方法释放了锁，使得其他线程可以使用同步控制块或者方法。
 
+sleep不出让系统资源；wait是进入线程等待池等待，出让系统资源，其他线程可以占用CPU。一般wait不会加时间限制，因为如果wait线程的运行资源不够，再出来也没用，要等待其他线程调用notify/notifyAll唤醒等待池中的所有线程，才会进入就绪队列等待OS分配系统资源。sleep(milliseconds)可以用时间指定使它自动唤醒过来，如果时间不到只能调用interrupt()强行打断。
 
+Thread.Sleep(0)的作用是“触发操作系统立刻重新进行一次CPU竞争”。
+3、**使用范围：**wait，notify和notifyAll只能在同步控制方法或者同步控制块里面使用，而sleep可以在任何地方使用
+  synchronized(x){
+   x.notify()
+   //或者wait()
+  }
+4、sleep必须**捕获异常**，而wait，notify和notifyAll不需要捕获异常
 
+### start和run的区别，
 
+1.start（）方法来启动线程，真正实现了多线程运行，这时无需等待run方法体代码执行完毕而直接继续执行下面的代码：
+通过调用Thread类的start()方法来启动一个线程，这时此线程是处于就绪状态，并没有运行。然后通过此Thread类调用方法run()来完成其运行操作的，这里方法run()称为线程体，它包含了要执行的这个线程的内容，Run方法运行结束，此线程终止，而CPU再运行其它线程，
 
+2.run（）方法当作普通方法的方式调用，程序还是要顺序执行，还是要等待run方法体执行完毕后才可继续执行下面的代码：
+而如果直接用Run方法，这只是调用一个方法而已，程序中依然只有主线程--这一个线程，其程序执行路径还是只有一条，这样就没有达到写线程的目的。
 
-### 四种线程池分别是什么，线程的生命周期是什么，如何终止线程，sleep和wait的区别，start和run的区别，
+3.Thread对象的run()方法在一种循环下，使线程一直运行，直到不满足条件为止，在你的main()里创建并运行了一些线程，调用Thread类的start（）方法将为线程执行特殊的初始化的过程，来配置线程，然后由线程执行机制调用run（）。如果你不调用start（）线程就不会启动。
 
-
+因为线程调度机制的行为是不确定的，所以每次运行该程序都会有不同的结果，你可以把你的循环次数增多些，然后看看执行的结果，你会发现main（）的线程和Thread1是交替运行的。
+4.还有就是尽管线程的调度顺序是不固定的，但是如果有很多线程被阻塞等待运行，调度程序将会让优先级高的线程先执行，而优先级低的线程执行的频率会低一些。
 
 ### Java当中的锁机制有哪些，synchronize的作用核心和实现是什么
 
+![img](https://img-blog.csdnimg.cn/20181122101753671.png?x-oss-process=image/watermark,type_ZmFuZ3poZW5naGVpdGk,shadow_10,text_aHR0cHM6Ly9ibG9nLmNzZG4ubmV0L2F4aWFvYm9nZQ==,size_16,color_FFFFFF,t_70)
+
+#### 1. 乐观锁 VS 悲观锁
+
+对于同一个数据的并发操作，悲观锁认为自己在使用数据的时候一定有别的线程来修改数据，因此在获取数据的时候会先加锁，确保数据不会被别的线程修改。Java中，synchronized关键字和Lock的实现类都是悲观锁。而乐观锁认为自己在使用数据时不会有别的线程修改数据，所以不会添加锁，只是在更新数据的时候去判断之前有没有别的线程更新了这个数据。如果这个数据没有被更新，当前线程将自己修改的数据成功写入。如果数据已经被其他线程更新，则根据不同的实现方式执行不同的操作（例如报错或者自动重试）。
 
 
-### 线程当中有什么方法，上下文如何切换，
+
+乐观锁在Java中是通过使用无锁编程来实现，最常采用的是CAS算法，Java原子类中的递增操作就通过CAS自旋实现的。
+
+![img](https://img-blog.csdnimg.cn/20181122101819836.png?x-oss-process=image/watermark,type_ZmFuZ3poZW5naGVpdGk,shadow_10,text_aHR0cHM6Ly9ibG9nLmNzZG4ubmV0L2F4aWFvYm9nZQ==,size_16,color_FFFFFF,t_70)
+
+根据从上面的概念描述我们可以发现：
+
+- 悲观锁适合写操作多的场景，先加锁可以保证写操作时数据正确。
+- 乐观锁适合读操作多的场景，不加锁的特点能够使其读操作的性能大幅提升。
+- ![img](https://img-blog.csdnimg.cn/20181122101946394.png?x-oss-process=image/watermark,type_ZmFuZ3poZW5naGVpdGk,shadow_10,text_aHR0cHM6Ly9ibG9nLmNzZG4ubmV0L2F4aWFvYm9nZQ==,size_16,color_FFFFFF,t_70)
+
+悲观锁基本都是在显式的锁定之后再操作同步资源，而乐观锁则直接去操作同步资源
+
+CAS全称 Compare And Swap（比较与交换），是一种无锁算法。在不使用锁（没有线程被阻塞）的情况下实现多线程之间的变量同步。java.util.concurrent包中的原子类就是通过CAS来实现了乐观锁。
+
+CAS算法涉及到三个操作数：
+
+- 需要读写的内存值 V。
+- 进行比较的值 A。
+- 要写入的新值 B。
+
+当且仅当 V 的值等于 A 时，CAS通过原子方式用新值B来更新V的值（“比较+更新”整体是一个原子操作），否则不会执行任何操作。一般情况下，“更新”是一个不断重试的操作。
+
+之前提到java.util.concurrent包中的原子类，就是通过CAS来实现了乐观锁，那么我们进入原子类AtomicInteger的源码，看一下AtomicInteger的定义：
+
+![img](https://img-blog.csdnimg.cn/20181122102030461.png?x-oss-process=image/watermark,type_ZmFuZ3poZW5naGVpdGk,shadow_10,text_aHR0cHM6Ly9ibG9nLmNzZG4ubmV0L2F4aWFvYm9nZQ==,size_16,color_FFFFFF,t_70)
+
+根据定义我们可以看出各属性的作用：
+
+- unsafe： 获取并操作内存的数据。
+- valueOffset： 存储value在AtomicInteger中的偏移量。
+- value： 存储AtomicInteger的int值，该属性需要借助volatile关键字保证其在线程间是可见的。
+
+CAS虽然很高效，但是它也存在三大问题，这里也简单说一下：
+
+1. ABA问题。CAS需要在操作值的时候检查内存值是否发生变化，没有发生变化才会更新内存值。但是如果内存值原来是A，后来变成了B，然后又变成了A，那么CAS进行检查时会发现值没有发生变化，但是实际上是有变化的。ABA问题的解决思路就是在变量前面添加版本号，每次变量更新的时候都把版本号加一，这样变化过程就从“A－B－A”变成了“1A－2B－3A”。
+
+JDK从1.5开始提供了AtomicStampedReference类来解决ABA问题，具体操作封装在compareAndSet()中。compareAndSet()首先检查当前引用和当前标志与预期引用和预期标志是否相等，如果都相等，则以原子方式将引用值和标志的值设置为给定的更新值。
+
+2. 循环时间长开销大。CAS操作如果长时间不成功，会导致其一直自旋，给CPU带来非常大的开销。
+
+3. 只能保证一个共享变量的原子操作。对一个共享变量执行操作时，CAS能够保证原子操作，但是对多个共享变量操作时，CAS是无法保证操作的原子性的。
+
+Java从1.5开始JDK提供了AtomicReference类来保证引用对象之间的原子性，可以把多个变量放在一个对象里来进行CAS操作。
+
+#### 2. 自旋锁 VS 适应性自旋锁
 
 
 
-### CAS AQS
+
+
+#### 3. 无锁 VS 偏向锁 VS 轻量级锁 VS 重量级锁
+
+#### 4. 公平锁 VS 非公平锁
+
+#### 5. 可重入锁 VS 非可重入锁
+
+#### 6. 独享锁 VS 共享锁
+
+
+
+### 线程当中有什么方法
+
+线程相关的方法有：wait、notify、notifyAll、sleep、join、yieId等
+
+
+
+
+
+
+
+### 上下文如何切换，
+
+利用了时间片轮转的方式，CPU给每个任务一定的时间，然后把当前任务的状态保存下来，在加载下一个任务的状态后，继续服务下一个任务，任务的状态保存及再加载，这个过程就叫做上下文切换时间片轮转使多个任务在一颗CPU上执行变成了可能
+
+引起上下文切换的原因：
+
+1、当执行的任务时间片用完以后，系统CPU正常调度下一个任务
+
+2、当前执行任务碰到IO阻塞，调度器将此任务挂起，继续下一个任务
+
+3、多任务抢占锁资源，当前任务没有抢到锁资源，被调度器挂起，继续下一个任务
+
+4、用户代码挂起当前任务，让出CPU时间
+
+5、硬件中断
+
+
+
+### CAS 
+
+CAS（Compare And Swap/Set） ：比较并交换，
+
+CAS算法的过程：它包含三个参数CAS(V,E,N)，V表示要更新的变量，E表示预期值（旧的），N表示新值，当且仅当V值等于E值时，才会将V值设为N，如果V值和E值不同，则说明在其他线程做了更新，最后，CAS返回当前V的真实值。
+
+CAS的操作是抱着乐观的态度进行的（乐观锁），他总是认为自己可以完成操作。当多个线程同时使用CAS操作一个变量时，只有一个会胜出，并成功更新，其余均会失败。失败的线程不会被挂起，仅是被告知失败，并且允许再次尝试，当然也允许失败的线程放弃操作。基于这样的原理，CAS即使没有锁，也会发现其他的线程对当前线程的干扰，并进行恰当的处理。
+
+### AQS
+
+AQS（AbstractQueuedSynchronizer）：抽象队列同步器，抽象的队列式的同步器。
+
+AQS定义了一套多线程访问共享资源的同步框架，许多同步类的实现都依赖于他。比如常用的ReentrantLock/Semaphore/CountDownLatch。
+
+AQS 定义两种资源共享方式 Exclusive 独占资源-ReentrantLock Exclusive（独占，只有一个线程能执行，如 ReentrantLock） Share 共享资源-Semaphore/CountDownLatch Share（共享，多个线程可同时执行，如 Semaphore/CountDownLatch）。 AQS 只是一个框架，具体资源的获取/释放方式交由自定义同步器去实现。
 
 
 
 ### 异常有哪些，怎么分类的，
 
+#### Error和Exception
+
+Error：是指Java运行时系统内部错误和资源耗尽错误，应用程序不会抛出该类对象，
+
+Exception：有两个分支，运行时异常（RuntimeException）和检查异常（CheckedException）
+
+RuntimeException：如NullPointerException、ClassCastException等，是那些在Java虚拟机运行期间抛出的异常类
+
+CheckedException：IOException、SQLException，一般是外部错误，经常要求try/catch，该类异常一般包括在：
+
+​		1、文件尾部读取数据时
+
+​		2、打开错误格式的URL
+
+​		3、根据给定的字符串查找class对象，但是这个字符串表示的对象不存在
+
+异常的处理方式：不进行处理，抛出交给调用者（throw和throws）
+
+抛出异常有三种形式：throw、throws、系统自动抛出异常
+
+```java
+public class Test01 {
+    public static void main(String[] args) {
+        String s="abc";
+        if (s.equals("abc")){
+            throw new NumberFormatException();
+        }else {
+            System.out.println(s);
+        }
+        
+    }
+    int div(int a,int b)throws Exception{
+        return a/b;
+    }
+}
+```
+
+#### throw和throws的区别：
+
+##### 位置不同：
+
+throw常用在函数上，后面跟的是异常类，可以跟多个，而throws用在函数内，后面跟的是异常对象
+
+##### 功能不同：
+
+​	1、throws 用来声明异常，让调用者只知道该功能可能出现的问题，可以给出预先的处理方 式；throw 抛出具体的问题对象，执行到 throw，功能就已经结束了，跳转到调用者，并 将具体的问题对象抛给调用者。也就是说 throw 语句独立存在时，下面不要定义其他语 句，因为执行不到
+
+​	2、throws 表示出现异常的一种可能性，并不一定会发生这些异常；throw 则是抛出了异常， 执行 throw 则一定抛出了某种异常对象
+
+​	3、两者都是消极处理异常的方式，只是抛出或者可能抛出异常，但是不会由函数去处理异 常，真正的处理异常由函数的上层调用处理。
+
+### 反射
+
+在 Java 中的反射机制是指在运行状态中，对于任意一个类都能够知道这个类所有的属性和方法； 并且对于任意一个对象，都能够调用它的任意一个方法；这种动态获取信息以及动态调用对象方 法的功能成为 Java 语言的反射机制
+
+#### 优点：
+
+ 运行期类型的判断，动态加载类，提高代码灵活度。
+
+#### 缺点： 
+
+性能瓶颈：反射相当于一系列解释操作，通知 JVM 要做的事情，性能 比直接的java代码要慢很多。
+
+#### 反射机制的应用场景有哪些？
+
+举例：①我们在使用JDBC连接数据库时使用Class.forName()通过反射加载数据库的驱动程序； ②Spring框架也用到很多反射机制， 经典的就是xml的配置模式。Spring 通过 XML 配置模式装载 Bean 的过程：1) 将程序内所有 XML 或 Properties 配置文件加载入内存中; 2)Java类里面解析xml或 properties里面的内容，得到对应实体类的字节码字符串以及相关的属性信息; 3)使用反射机制，根据这 个字符串获得某个类的Class实例; 4)动态配置实例的属
+
+#### Java获取反射的三种方法
+
+ 1.通过new对象实现反射机制
+
+ 2.通过路径实现反射机制 
+
+3.通过类名实现反射机制
+
+```java
+public class Student {
+ private int id;
+ String name;
+ protected boolean sex;
+ public float score;
+ }
+ public class Get {
+ //获取反射机制三种方式
+ public static void main(String[] args) throws ClassNotFoundException {
+ //方式一(通过建立对象)
+ Student stu = new Student();
+ Class classobj1 = stu.getClass();
+ System.out.println(classobj1.getName());
+ //方式二（所在通过路径-相对路径）
+ Class classobj2 = Class.forName("fanshe.Student");
+ System.out.println(classobj2.getName());
+ //方式三（通过类名）
+ Class classobj3 = Student.class;
+ System.out.println(classobj3.getName());
+ }
+```
+
+### 注解
+
+Annatation(注解)是一个接口，程序可以通过反射来获取指定程序中元素的 Annotation 对象，然后通过该 Annotation 对象来获取注解中的元数据信息。
 
 
 
 
-### 反射的好处是什么
 
 
 
-### 注解，内部类，泛型，序列化
+
+
+### 内部类
+
+##### 定义在类内部的静态类，就是静态内部类
+
+1. 静态内部类可以访问外部类所有的静态变量和方法，即使是 private 的也一样。
+2. 静态内部类和一般类一致，可以定义静态变量、方法，构造方法等。
+3. 其它类使用静态内部类需要使用“外部类.静态内部类”方式，如下所示：Out.Inner inner =  new Out.Inner();inner.print(); 
+4. Java集合类HashMap内部就有一个静态内部类Entry。Entry是HashMap存放元素的抽象， HashMap 内部维护 Entry 数组用了存放元素，但是 Entry 对使用者是透明的。像这种和外部 类关系密切的，且不依赖外部类实例的，都可以使用静态内部类。
+
+### 泛型
+
+### 序列化
 
 
 
