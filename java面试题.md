@@ -2,7 +2,9 @@ java
 
 
 
-### **jvm中的内存区域**
+# Java基础
+
+### jvm中的内存区域
 
 #### jvm中有五大内存区域，分别是程序计数器，java栈，本地方法栈，堆，方法区
 
@@ -1826,29 +1828,411 @@ public class Test {
 
 泛型类（T）
 
+泛型类的声明和非泛型类的声明类似，除了在类名后面添加了类型参数声明部分。和泛型方法一样，泛 型类的类型参数声明部分也包含一个或多个类型参数，参数间用逗号隔开。一个泛型参数，也被称为一 个类型变量，是用于指定一个泛型类型名称的标识符。因为他们接受一个或多个参数，这些类被称为参 数化的类或参数化的类型。
+
+```java
+public class Box<T> {
+private T t;
+public void add(T t) {
+this.t = t;
+}
+public T get() {
+return t;
+}
+```
 
 
-### 序列化
+
+类型通配符? 类 型 通 配 符 一 般 是 使 用 ? 代 替 具 体 的 类 型 参 数 。 例 如 List 在 逻 辑 上 是 List,List 等所有 List<具体类型实参>的父类。
 
 
 
-### cookie和session分别是干什么的，转发和重定向的区别，
+### 序列化(创建可复用的 Java 对象)
+
+使用 Java 对象序列化，在保存对象时，会把其状态保存为一组字节，在未来，再将这些字节组装成对 象。必须注意地是，对象序列化保存的是对象的”状态”，即它的成员变量。由此可知，对象序列化不会 关注类中的静态变量。
+
+Serializable 实现序列化 在 Java 中，只要一个类实现了 java.io.Serializable 接口，那么它就可以被序列化。
+
+##### 通过ObjectOutputStream 和ObjectInputStream 对对象进行序列化及反序列化
+
+##### 在类中增加 writeObject 和 readObject 方法可以实现自定义序列化策略。
+
+序列化并不保存静态变量序列化子父类说明 要想将父类对象也序列化，就需要让父类也实现 Serializable 接口。
+
+Transient 关键字阻止该变量被序列化到文件中 
+
+1. 在变量声明前加上 Transient 关键字，可以阻止该变量被序列化到文件中，在被反序列化后， transient 变量的值被设为初始值，如 int 型的是 0，对象型的是 null。
+2. 服务器端给客户端发送序列化对象数据，对象中有一些数据是敏感的，比如密码字符串等，希望对 该密码字段在序列化时，进行加密，而客户端如果拥有解密的密钥，只有在客户端进行反序列化 时，才可以对密码进行读取，这样可以一定程度保证序列化对象的数据安全。
+
+
+
+# JavaWeb
+
+### cookie和session分别是干什么的
+
+**Cookie通过在客户端记录信息确定用户身份**，**Session通过在服务器端记录信息确定用户身份**。
+
+#### Cookie：
+
+HTTP协议是无状态的协议。一旦数据交换完毕，客户端与服务器端的连接就会关闭，再次交换数据需要建立新的连接。这就意味着服务器无法从连接上跟踪会话。，**给客户端们颁发一个通行证吧，每人一个，无论谁访问都必须携带自己通行证。这样服务器就能从通行证上确认客户身份了。这就是Cookie的工作原理**。
+
+通过**request.getCookie()获取客户端提交的所有Cookie**（以Cookie[]数组形式返回），**通过response.addCookie(Cookiecookie)向客户端设置Cookie。**
+
+**Cookie具有不可跨域名性**
+
+Cookie在客户端是由浏览器来管理的。
+
+**中文属于Unicode字符，在内存中占4个字符，而英文属于ASCII字符，内存中只占2个字节**。Cookie中使用Unicode字符时需要对Unicode字符进行编码，否则会乱码。Cookie中保存中文只能编码。一般使用UTF-8编码即可。不推荐使用GBK等中文编码，因为浏览器不一定支持，而且JavaScript也不支持GBK编码。
+
+Cookie的maxAge决定着Cookie的有效期，单位为秒（Second）。Cookie中通过getMaxAge()方法与setMaxAge(int maxAge)方法来读写maxAge属性。
+
+如果maxAge属性为正数，则表示该Cookie会在maxAge秒之后自动失效。浏览器会将maxAge为正数的Cookie持久化，即写到对应的Cookie文件中。无论客户关闭了浏览器还是电脑，只要还在maxAge秒之前，登录网站时该Cookie仍然有效。
+
+如果maxAge为负数，则表示该Cookie仅在本浏览器窗口以及本窗口打开的子窗口内有效，关闭窗口后该Cookie即失效。maxAge为负数的Cookie，为临时性Cookie，不会被持久化，不会被写到Cookie文件中。Cookie信息保存在浏览器内存中，因此关闭浏览器该Cookie就消失了。Cookie默认的maxAge值为–1。
+
+如果maxAge为0，则表示删除该Cookie。Cookie机制没有提供删除Cookie的方法，因此通过设置该Cookie即时失效实现删除Cookie的效果。失效的Cookie会被浏览器从Cookie文件或者内存中删除，
+
+response对象提供的Cookie操作方法只有一个添加操作add(Cookie cookie)。
+
+要想修改Cookie只能使用一个同名的Cookie来覆盖原来的Cookie，达到修改的目的。删除时只需要把maxAge修改为0即可。
+
+####  **案例：永久登录**
+
+实现方法是**把登录信息如账号、密码等保存在Cookie中，并控制Cookie的有效期，下次访问时再验证Cookie中的登录信息即可。**
+
+保存登录信息有多种方案。最直接的是把用户名与密码都保持到Cookie中，下次访问时检查Cookie中的用户名与密码，与数据库比较。这是**一种比较危险的选择，一般不把密码等重要信息保存到Cookie中**。
+
+　　还有**一种方案是把密码加密后保存到Cookie中，下次访问时解密并与数据库比较**。这种方案略微安全一些。如果不希望保存密码，还可以把登录的时间戳保存到Cookie与数据库中，到时只验证用户名与登录时间戳就可以了。
+
+```jsp
+<%@ page language="java"pageEncoding="UTF-8" isErrorPage="false" %>
+
+<%!                                                  // JSP方法
+
+    private static final String KEY =":cookie@helloweenvsfei.com";
+                                                     // 密钥 
+
+    public final static String calcMD1(Stringss) { // MD1 加密算法
+
+       String s = ss==null ?"" : ss;                  // 若为null返回空
+
+       char hexDigits[] = { '0','1', '2', '3', '4', '1', '6', '7', '8', '9',
+       'a', 'b', 'c', 'd', 'e', 'f' };                        // 字典
+
+       try {
+
+        byte[] strTemp =s.getBytes();                          // 获取字节
+
+        MessageDigestmdTemp = MessageDigest.getInstance("MD1"); // 获取MD1
+
+       mdTemp.update(strTemp);                                // 更新数据
+
+        byte[] md =mdTemp.digest();                        // 加密
+
+        int j =md.length;                                 // 加密后的长度
+
+        char str[] = newchar[j * 2];                       // 新字符串数组
+
+        int k =0;                                         // 计数器k
+
+        for (int i = 0; i< j; i++) {                       // 循环输出
+
+         byte byte0 =md[i];
+
+         str[k++] =hexDigits[byte0 >>> 4 & 0xf];
+
+         str[k++] =hexDigits[byte0 & 0xf];
+
+        }
+
+        return newString(str);                             // 加密后字符串
+
+       } catch (Exception e){return null; }
+
+    }
+
+%>
+
+<%
+
+   request.setCharacterEncoding("UTF-8");             // 设置request编码
+
+    response.setCharacterEncoding("UTF-8");        // 设置response编码
+
+   
+
+    String action =request.getParameter("action"); // 获取action参数
+
+   
+
+    if("login".equals(action)){                       // 如果为login动作
+
+        String account =request.getParameter("account");                    // 获取account参数
+        String password =request.getParameter("password");// 获取password参数
+        int timeout = newInteger(request.getParameter("timeout"));
+
+        String ssid =calcMD1(account + KEY); // 把账号、密钥使用MD1加密后保存
+
+        CookieaccountCookie = new Cookie("account", account);     // 新建Cookie
+       accountCookie.setMaxAge(timeout);              // 设置有效期
+        Cookie ssidCookie =new Cookie("ssid", ssid);   // 新建Cookie
+       ssidCookie.setMaxAge(timeout);                 // 设置有效期
+       response.addCookie(accountCookie);             // 输出到客户端
+       response.addCookie(ssidCookie);            // 输出到客户端
+
+        // 重新请求本页面，参数中带有时间戳，禁止浏览器缓存页面内容
+
+       response.sendRedirect(request.getRequestURI() + "?" + System.
+        currentTimeMillis());
+        return;
+    }
+
+    elseif("logout".equals(action)){                  // 如果为logout动作
+
+        CookieaccountCookie = new Cookie("account", "");
+                                                 // 新建Cookie，内容为空
+       accountCookie.setMaxAge(0);                // 设置有效期为0，删除
+    Cookie ssidCookie =new Cookie("ssid", ""); // 新建Cookie，内容为空
+       ssidCookie.setMaxAge(0);                   // 设置有效期为0，删除
+       response.addCookie(accountCookie);         // 输出到客户端
+       response.addCookie(ssidCookie);         // 输出到客户端
+        //重新请求本页面，参数中带有时间戳，禁止浏览器缓存页面内容
+       response.sendRedirect(request.getRequestURI() + "?" + System.
+        currentTimeMillis());
+        return;
+    }
+    boolean login = false;                        // 是否登录
+    String account = null;                        // 账号
+    String ssid = null;                           // SSID标识
+   
+    if(request.getCookies() !=null){               // 如果Cookie不为空
+
+        for(Cookie cookie :request.getCookies()){  // 遍历Cookie
+
+           if(cookie.getName().equals("account"))  // 如果Cookie名为account
+               account = cookie.getValue();       // 保存account内容
+           if(cookie.getName().equals("ssid")) // 如果为SSID
+               ssid = cookie.getValue();          // 保存SSID内容
+        }
+    }
+
+    if(account != null && ssid !=null){    // 如果account、SSID都不为空
+
+        login =ssid.equals(calcMD1(account + KEY));
+                                      // 如果加密规则正确, 则视为已经登录
+    }
+
+%>
+
+<!DOCTYPE HTML PUBLIC "-//W3C//DTD HTML 4.01Transitional//EN">
+
+       <legend><%= login ? "欢迎您回来" : "请先登录"%></legend>
+
+        <% if(login){%>
+
+            欢迎您, ${ cookie.account.value }.   
+
+           <a href="${ pageContext.request.requestURI }?action=logout">
+            注销</a>
+
+        <% } else {%>
+
+        <formaction="${ pageContext.request.requestURI }?action=login"
+        method="post">
+           <table>
+               <tr><td>账号： </td>
+
+                   <td><input type="text"name="account" style="width:
+                   200px; "></td>
+
+               </tr>
+
+               <tr><td>密码： </td>
+
+                   <td><inputtype="password" name="password"></td>
+
+               </tr>
+
+               <tr>
+
+                   <td>有效期： </td>
+
+                   <td><inputtype="radio" name="timeout" value="-1"
+                   checked> 关闭浏览器即失效 <br/> <input type="radio" 
+                   name="timeout" value="<%= 30 *24 * 60 * 60 %>"> 30天
+                   内有效 <br/><input type="radio" name="timeout" value= 
+                   "<%= Integer.MAX_VALUE %>"> 永久有效 <br/> </td> </tr>
+
+               <tr><td></td>
+
+                   <td><input type="submit"value=" 登  录 " class= 
+                   "button"></td>
+
+               </tr>
+
+           </table>
+
+        </form>
+
+        <% } %>
+```
+
+#### Session
+
+**Session是服务器端使用的一种记录客户端状态的机制**，使用上比Cookie简单一些，相应的也**增加了服务器的存储压力**。
+
+**Cookie机制是通过检查客户身上的“通行证”来确定客户身份的话，那么Session机制就是通过检查服务器上的“客户明细表”来确认客户身份。Session相当于程序在服务器上建立的一份客户档案，客户来访的时候只需要查询客户档案表就可以了。**
+
+Session对应的类为javax.servlet.http.HttpSession类。每个来访者对应一个Session对象，所有该客户的状态信息都保存在这个Session对象里。**Session对象是在客户端第一次请求服务器的时候创建的**。Session也是一种key-value的属性对，通过getAttribute(Stringkey)和setAttribute(String key，Objectvalue)方法读写客户状态信息。Servlet里通过request.getSession()方法获取该客户的Session，
+
+Servlet中必须使用request来编程式获取HttpSession对象，而JSP中内置了Session隐藏对象，可以直接使用。如果使用声明了<%@page session="false" %>，则Session隐藏对象不可用。
+
+Session保存在服务器端。**为了获得更高的存取速度，服务器一般把Session放在内存里。每个用户都会有一个独立的Session。如果Session内容过于复杂，当大量客户访问服务器时可能会导致内存溢出。因此，Session里的信息应该尽量精简。**
+
+　　**Session在用户第一次访问服务器的时候自动创建**。需要注意只有访问JSP、Servlet等程序时才会创建Session，只访问HTML、IMAGE等静态资源并不会创建Session。如果尚未生成Session，也可以使用request.getSession(true)强制生成Session。
+
+**Session生成后，只要用户继续访问，服务器就会更新Session的最后访问时间，并维护该Session**。用户每访问服务器一次，无论是否读写Session，服务器都认为该用户的Session“活跃（active）”了一次。
+
+Session需要使用Cookie作为识别标志。HTTP协议是无状态的，Session不能依据HTTP连接来判断是否为同一客户，因此服务器向客户端浏览器发送一个名为JSESSIONID的Cookie，它的值为该Session的id（也就是HttpSession.getId()的返回值）。Session依据该Cookie来识别是否为同一用户。
+
+#### Cookie和Session的区别：
+
+**1、cookie数据存放在客户的浏览器上，session数据放在服务器上.**
+
+**2、cookie不是很安全，别人可以分析存放在本地的COOKIE并进行COOKIE欺骗考虑到安全应当使用session。**
+
+**3、设置cookie时间可以使cookie过期。但是使用session-destory（），我们将会销毁会话。**
+
+**4、session会在一定时间内保存在服务器上。当访问增多，会比较占用你服务器的性能考虑到减轻服务器性能方面，应当使用cookie。**
+
+**5、单个cookie保存的数据不能超过4K，很多浏览器都限制一个站点最多保存20个cookie。(Session对象没有对存储的数据量的限制，其中可以保存更为复杂的数据类型)**
+
+#### 转发和重定向的区别
+
+##### **1、请求次数不同；**
+
+重定向是浏览器向服务器发送一个请求并收到响应后再次向一个新地址发出请求，转发是服务器收到请求后为了完成响应跳转到一个新的地址；重定向至少请求两次，转发请求一次；
+
+
+
+##### **2、重定向时地址栏会发生变化，而转发时地址栏不会发生变化；**
+
+重定向可以跳转到任意URL，转发只能跳转本站点资源；
+
+##### **3、重定向两次请求不共享数据，转发一次请求共享数据。**
+
+##### 4、重定向是客户端行为，转发是服务器端行为；
 
 
 
 ### jsp 的四种作用域和九种内置对象，
 
+JSP的四大作用域：page、request、session、application
+
+九大内置对象，page、config、appliction、request、response、session、out、exception、pageContext
 
 
-### spring的特点，核心组件有哪些，常用注解
+
+# Spring部分
+
+### spring的特点，
+
+轻量级
+
+控制反转
+
+通过控制反转(IOC)促进了低耦合，当应用了IOC，一个对象依赖的其他对象会通过被动的方式传递过来，而不是这个对象自己传递或者查找依赖对象
+
+
+
+
+
+面向切面
+
+支持面向切面的编程，并且把应用业务逻辑和系统服务分开
+
+
+
+容器
+
+Sping包含并且管理应用对象配置和生命周期，在这个意义上他就是个容器，你可以配置你的每个bean如何被创建，————给予一个可配置的原型，你的bean可以创建一个单独的实例或者每次需要时生成一个新的实例，以及他们是如何相互关联的
+
+
+
+
+
+框架集合
+
+Spring可以将简单的组件配置组合成复杂的应用，在Spring中，应用对象被声明式的组合，典型的是在一个XML文件里，SPring提供了很多基础功能（事务管理，持久化框架等），将应用逻辑的开发留给开发者
+
+
+
+### 核心组件有哪些，
+
+![](C:/Users/16143/Desktop/%E7%AC%94%E8%AE%B0/note-main/pic/image-20220119110916097.png)
+
+
+
+Spring常用模块：
+
+
+
+
+
+
+
+### 常用注解
 
 
 
 ### ioc的原理
 
+Spring 通过一个配置文件描述 Bean 及 Bean 之间的依赖关系，利用 Java 语言的反射功能实例化 Bean 并建立 Bean 之间的依赖关系。 Spring 的 IoC 容器在完成这些底层工作的基础上，还提供 了 Bean 实例缓存、生命周期管理、 Bean 实例代理、事件发布、资源装载等高级服务
+
+**Spring 启动时读取应用程序提供的 Bean 配置信息，并在 Spring 容器中生成一份相应的 Bean 配 置注册表，然后根据这张注册表实例化 Bean，装配好 Bean 之间的依赖关系，为上层应用提供准 备就绪的运行环境。其中 Bean 缓存池为 HashMap 实现**
+
+![Spring IOC概论(Spring 容器高层视图)插图2](https://pic.imgdb.cn/item/61e126252ab3f51d91365bd8.png)
+
+Java对象的生命舟周期：实例化=====》GC垃圾回收
+
+### springbean的作用周期
+
+- 实例化 Instantiation
+- 属性赋值 Populate
+- 初始化 Initialization
+- 销毁 Destruction
 
 
-### springbean的作用周期，作用域
+
+实例化：实例化一个Bean，也就是常说的new
+
+IOC依赖注入：按照上下文对实例化的Bean进行配置，也就是IOC注入
+
+setBeanName实现：如果这个bean实现了BeanNameAware接口，那么会调用它实现的setBeanName(String)方法，此处传递的就是Spring配置文件中的Bean的ID的值
+
+BeanFactoryAware实现：如果这个Bean实现了BeanFactoryAware接口，那么会调用它实现的setBeanFactory(BeanFactory)传递的是Spring工厂自身（可以用这个方式来获取其它 Bean， 只需在 Spring 配置文件中配置一个普通的 Bean 就可以）
+
+ApplicationContextAware实现：如果这个 Bean 已经实现了 ApplicationContextAware 接口，会调用 setApplicationContext(ApplicationContext)方法，传入 Spring 上下文（同样这个方式也 可以实现步骤 4 的内容，但比 4 更好，因为 ApplicationContext 是 BeanFactory 的子接 口，有更多的实现方法）
+
+postProcessBeforeInitialization接口实现-初始化预处理：如果这个 Bean 关联了 BeanPostProcessor 接口，将会调用 postProcessBeforeInitialization(Object obj, String s)方法，BeanPostProcessor 经常被用 作是 Bean 内容的更改，并且由于这个是在 Bean 初始化结束时调用那个的方法，也可以被应 用于内存或缓存技术。
+
+init-method：如果 Bean 在 Spring 配置文件中配置了 init-method 属性会自动调用其配置的初始化方法。
+
+postProcessAfterInitialization：如果这个 Bean 关联了 BeanPostProcessor 接口，将会调用 postProcessAfterInitialization(Object obj, String s)方法。 注：以上工作完成以后就可以应用这个 Bean 了，那这个 Bean 是一个 Singleton 的，所以一 般情况下我们调用同一个 id 的 Bean 会是在内容地址相同的实例，当然在 Spring 配置文件中 也可以配置非 Singleton。
+
+Destroy 过期自动清理阶： Bean 不再需要时，会经过清理阶段，如果 Bean 实现了 DisposableBean 这个接口，会调 用那个其实现的 destroy()方法。
+
+destroy-method 自配置清理：，如果这个 Bean 的 Spring 配置中配置了 destroy-method 属性，会自动调用其配置的 销毁方法
+
+
+
+
+
+
+
+
+
+### 作用域
 
 
 
@@ -1902,15 +2286,110 @@ public class Test {
 
 ### 消息队列 
 
+#### 为什么使用MQ？MQ的优点
+
+简答：
+
+异步处理 - 相比于传统的串行、并行方式，提高了系统吞吐量。
+
+应用解耦 - 系统间通过消息通信，不用关心其他系统的处理。 
+
+流量削锋 - 可以通过消息队列长度控制请求量；可以缓解短时间内的高并发请 求。 
+
+日志处理 - 解决大量日志传输。 
+
+消息通讯 - 消息队列一般都内置了高效的通信机制，因此也可以用在纯的消息通 讯。比如实现点对点消息队列，或者聊天室等。
+
+详答：
+
+主要是：解耦、异步、削峰。
+
+解耦：A 系统发送数据到 BCD 三个系统，通过接口调用发送。如果 E 系统也要 这个数据呢？那如果 C 系统现在不需要了呢？A 系统负责人几乎崩溃…A 系统 跟其它各种乱七八糟 的系统严重耦合，A 系统产生一条比较关键的数据，很多系 统都需要 A 系统将这个数据发送过来。如果使用 MQ，A 系统产生一条数据， 发送到 MQ 里面去，哪个系统需要数据 自己去 MQ 里面消费。如果新系统需要 数据，直接从 MQ 里消费即可；如果某个系统不需要这条数据了，就取消对 MQ 消息的消费即可。这样下来，A 系统压根儿不需要去考 虑要给谁发送数 据，不需要维护这个代码，也不需要考虑人家是否调用成功、失败超时等情况。 就是一个系统或者一个模块，调用了多个系统或者模块，互相之间的调用很复 杂，维护起来很麻烦。但是其实这个调用是不需要直接同步调用接口的，如果用 MQ 给它异步化解耦。
+
+异步：A 系统接收一个请求，需要在自己本地写库，还需要在 BCD 三个系统写 库，自己本地写库要 3ms，BCD 三个系统分别写库要 300ms、450ms、 200ms。最终请求总延 时是 3 + 300 + 450 + 200 = 953ms，接近 1s，用户 感觉搞个什么东西，慢死了慢死了。用户通过浏览器发起请求。如果使用 MQ，那么 A 系统连续发送 3 条消息到 MQ 队列 中，假如耗时 5ms，A 系统从 接受一个请求到返回响应给用户，总时长是 3 + 5 = 8ms。
+
+削峰：减少高峰时期对服务器压力。
+
+他还支持集群化、高可用部署架构、消息高可靠支持，功能较为完善。
+
+缺点有以下几个： 
+
+**系统可用性降低：**本来系统运行好好的，现在你非要加入个消息队列进去，那消息队列挂了，你的 系统不是呵呵了。因此，系统可用性会降低； 
+
+**系统复杂度提高：**加入了消息队列，要多考虑很多方面的问题，比如：一致性问题、如何保证消息 不被重复消费、如何保证消息可靠性传输等。因此，需要考虑的东西更多，复杂 性增大。 
+
+**一致性问题：**A 系统处理完了直接返回成功了，人都以为你这个请求就成功了；但是问题是， 要是 BCD 三个系统那里，BD 两个系统写库成功了，结果 C 系统写库失败了， 咋整？你这数据就 不一致了。
+
 
 
 ### rabbit MQ的几种工作模式，怎么保证消息的可靠性，怎么保证消息不被重复消费，消息的有序性，
+
+Rabbit MQ架构：
+
+
+
+Message：消息，消息是不具名的，它由消息头和消息体组成。消息体是不透明的，而消息头则由一系 列的可选属性组成，这些属性包括 routing-key（路由键）、priority（相对于其他消息的优 先权）、delivery-mode（指出该消息可能需要持久性存储）等
+
+Publisher：消息的生产者，也是一个向交换器发布消息的客户端应用程序。
+
+Exchange：用来接收生产者发送的消息并将这些消息路由给服务器中的队列。
+
+Binding：绑定，用于消息队列和交换器之间的关联。
+
+Queue：消息队列，用来保存消息直到发送给消费者。它是消息的容器，也是消息的终点。一个消息 可投入一个或多个队列。消息一直在队列里面，等待消费者连接到这个队列将其取走。
+
+Connection：网络连接，比如一个 TCP 连接
+
+Channel：信道，多路复用连接中的一条独立的双向数据流通道。
+
+Consumer：消息的消费者，表示一个从消息队列中取得消息的客户端应用程序。
+
+Virtual Host：虚拟主机是共享相同的身份认证和加密 环境的独立服务器域
+
+Broker：表示消息队列服务器实体
+
+
+
+Exchange 类型：
+
+Exchange 分发消息时根据类型的不同分发策略有区别，目前共四种类型：direct、fanout、 topic、headers 。headers 匹配 AMQP 消息的 header 而不是路由键，此外 headers 交换器和 direct 交换器完全一致，但性能差很多，目前几乎用不到了，所以直接看另外三种类型：
+
+
+
+
+
+
 
 
 
 ### kafka的设计理念
 
 
+
+
+
+![image-20220119141101147](C:/Users/16143/Desktop/%E7%AC%94%E8%AE%B0/note-main/pic/image-20220119141101147.png)
+
+
+
+
+
+Kafka、ActiveMQ.RabbitMQ、RocketMQ有什么优缺点?
+
+|             |                           ActiveMQ                           |                          RabbitMQ                           |                           RocketMQ                           |                            Kafka                             |        zeroMQ        |
+| ----------- | :----------------------------------------------------------: | :---------------------------------------------------------: | :----------------------------------------------------------: | :----------------------------------------------------------: | :------------------: |
+| 单机吞吐    |                         比RabbitMQ低                         |                   2.6w/s （消息做持久化)                    |                           11.6w/s                            |                           17.3wls                            |        29w/s         |
+| 开发语言    |                             Java                             |                           Erlang                            |                             Java                             |                          ScalalJava                          |          C           |
+| 主要维护    |                            Apache                            |                       Mozilla/Spring                        |                           Alibaba                            |                            Apache                            |       iMatix创       |
+| 成熟度      |                             成熟                             |                            成熟                             |                       开源版本不够成熟                       |                           比较成熟                           | 只有C、PHP等版本成熟 |
+| 订阅形式    |                   点对点(p2p)、广播（发布                    | 提供了4种: direct,topic,Headers和fanout。fanout就是广播模式 | 基于topic/me ssageTag 以及按照消息类型、属性进行正则匹配的发布订阅模式 |       基于topic以及按照topic进行正则匹配的发布订阅模式       |     点对点(P2P)      |
+| 持久化      |                        支持少量 堆积                         |                        支持少量 堆积                        |                        支持大量 堆积                         |                        支持大量 堆积                         |        不支持        |
+| 顺序消息    |                            不支持                            |                           不支持                            |                             支持                             |                             支持                             |        不支持        |
+| 性能稳定 性 |                              好                              |                             好                              |                             一般                             |                             较差                             |         很好         |
+| 集群方式    | 支持简单 集群模 式，比 如’主备’，对 高级集群 模式 支持 不好。 |  支持简单 集群，'复 制’模 式， 对高 级集群模 式支持不 好。  | 常用 多 对’Mast erSlave’ 模 式，开源 版本需手 动切换 Slave变成 Master | 天然 的‘Lead erSlave’无 状态集 群，每台 服务器既 是Master 也是Slave |        不支持        |
+| 管理界面    |                             一般                             |                            较好                             |                             一般                             |                              无                              |          无          |
+
+中小型公司，技术实力较为一般，技术挑战不是特别高，用 RabbitMQ 是 不错的选择；大型公司，基础架构研发实力较强，用 RocketMQ 是很好的选 择。 如果是大数据领域的实时计算、日志采集等场景，用 Kafka 是业内标准的，
 
 ### 数据量过大数据库存不下，hbase的核心概念是什么，有哪些核心的架构，写逻辑
 
@@ -1922,17 +2401,246 @@ public class Test {
 
 ### 设计模式：
 
+[23 种设计模式详解（全23种）_人生智慧的博客-CSDN博客_设计模式](https://blog.csdn.net/A1342772/article/details/91349142)
+
+总体来说设计模式分为三大类：
+
+创建型模式，共五种：工厂方法模式、抽象工厂模式、单例模式、建造者模式、原型模式。
+
+结构型模式，共七种：适配器模式、装饰器模式、代理模式、外观模式、桥接模式、组合模式、享元模式。
+
+行为型模式，共十一种：策略模式、模板方法模式、观察者模式、迭代子模式、责任链模式、命令模式、备忘录模式、状态模式、访问者模式、中介者模式、解释器模式。
+
+
+
+
+
 
 
 ### 负载均衡做过哪些，有哪些策略与算法
 
+负载均衡 建立在现有网络结构之上，它提供了一种廉价有效透明的方法扩展网络设备和服务器的带 宽、增加吞吐量、加强网络数据处理能力、提高网络的灵活性和可用性。
+
+##### 四层负载均衡（目标地址和端口交换）
+
+主要通过报文中的目标地址和端口，再加上负载均衡设备设置的服务器选择方式，决定最终选择 的内部服务器。 以常见的 TCP 为例，负载均衡设备在接收到第一个来自客户端的 SYN 请求时，即通过上述方式选 择一个最佳的服务器，并对报文中目标 IP 地址进行修改(改为后端服务器 IP），直接转发给该服务 器。TCP 的连接建立，即三次握手是客户端和服务器直接建立的，负载均衡设备只是起到一个类 似路由器的转发动作。
+
+##### 实现四层负载均衡的软件有：
+
+F5：硬件负载均衡器，功能很好，但是成本很高。 
+
+lvs：重量级的四层负载软件。 
+
+nginx：轻量级的四层负载软件，带缓存功能，正则表达式较灵活。 
+
+haproxy：模拟四层转发，较灵活。
+
+##### 七层负载均衡（内容交换）
+
+所谓七层负载均衡，也称为“内容交换”，也就是主要通过报文中的真正有意义的应用层内容， 再加上负载均衡设备设置的服务器选择方式，决定最终选择的内部服务器
+
+七层应用负载的好处，是使得整个网络更智能化。例如访问一个网站的用户流量，可以通过七层 的方式，将对图片类的请求转发到特定的图片服务器并可以使用缓存技术；将对文字类的请求可 以转发到特定的文字服务器并可以使用压缩技术。
+
+##### 实现七层负载均衡的软件有:
+
+haproxy：天生负载均衡技能，全面支持七层代理，会话保持，标记，路径转移； 
+
+nginx：只在 http 协议和 mail 协议上功能比较好，性能与 haproxy 差不多； 
+
+apache：功能较差 
+
+Mysql proxy：功能尚可。
+
+#### 负载均衡算法/策略
+
+##### 轮循均衡（Round Robin）
+
+每一次来自网络的请求轮流分配给内部中的服务器，从 1 至 N 然后重新开始。此种均衡算法适合 于服务器组中的所有服务器都有相同的软硬件配置并且平均服务请求相对均衡的情况。
+
+##### 权重轮循均衡（Weighted Round Robin）
+
+根据服务器的不同处理能力，给每个服务器分配不同的权值，使其能够接受相应权值数的服务请 求。例如：服务器 A 的权值被设计成 1，B 的权值是 3，C 的权值是 6，则服务器 A、B、C 将分 别接受到 10%、30％、60％的服务请求。此种均衡算法能确保高性能的服务器得到更多的使用 率，避免低性能的服务器负载过重
+
+##### 随机均衡（Random）
+
+把来自网络的请求随机分配给内部中的多个服务器
+
+##### 权重随机均衡（Weighted Random）
+
+此种均衡算法类似于权重轮循算法，不过在处理请求分担时是个随机选择的过程。
+
+##### 响应速度均衡（Response Time 探测时间
+
+**负载均衡设备对内部各服务器发出一个探测请求（例如 Ping），然后根据内部中各服务器对探测 请求的最快响应时间来决定哪一台服务器来响应客户端的服务请求。**
+
+##### 最少连接数均衡（Least Connection）
+
+最少连接数均衡算法对内部中需负载的每一台服务器都有一个数据记录，记录当前该服务器正在 处理的连接数量，当有新的服务连接请求时，将把当前请求分配给连接数最少的服务器，使均衡 更加符合实际情况，负载更加均衡。此种均衡算法适合长时处理的请求服务，如 FTP。
+
+##### 处理能力均衡（CPU、内存）
+
+此种均衡算法将把服务请求分配给内部中处理负荷（根据服务器 CPU 型号、CPU 数量、内存大小 及当前连接数等换算而成）最轻的服务器，由于考虑到了内部服务器的处理能力及当前网络运行 状况，所以此种均衡算法相对来说更加精确，尤其适合运用到第七层（应用层）负载均衡的情况 下
+
+##### DNS 响应均衡（Flash DNS）
+
+在此均衡算法下，分处在不同地理位置的负载均衡设备收到同一个客户端的域名解析请求，并在 同一时间内把此域名解析成各自相对应服务器的 IP 地址并返回给客户端，则客户端将以最先收到 的域名解析 IP 地址来继续请求服务，而忽略其它的 IP 地址响应。在种均衡策略适合应用在全局负 载均衡的情况下，对本地负载均衡是没有意义的
+
+##### 哈希算法
+
+一致性哈希一致性 Hash，相同参数的请求总是发到同一提供者。当某一台提供者挂时，原本发往 该提供者的请求，基于虚拟节点，平摊到其它提供者，不会引起剧烈变动。
+
+##### IP 地址散列（保证客户端服务器对应关系稳定）
+
+通过管理发送方 IP 和目的地 IP 地址的散列，将来自同一发送方的分组(或发送至同一目的地的分 组)统一转发到相同服务器的算法。当客户端有一系列业务需要处理而必须和一个服务器反复通信 时，该算法能够以流(会话)为单位，保证来自相同客户端的通信能够一直在同一服务器中进行处 理。
+
+##### URL 散列
+
+通过管理客户端请求 URL 信息的散列，将发送至相同 URL 的请求转发至同一服务器的算法。
+
+### Lvs，keep live还有nginx的负载均衡有什么区别
 
 
-### lvs,keep live还有nginx的负载均衡有什么区别
+
+# 数据库部分
+
+### 索引是怎么构建的，如何失效
+
+索引（Index）是帮助 MySQL 高效获取数据的数据结构。常见的查询算法,顺序查找,二分查找,二 叉排序树查找,哈希散列法,分块查找,平衡多路搜索树 B 树（B-tree）
+
+常见的索引原则有：
+
+1、选择唯一性索引
+
+唯一性索引的值是唯一的，可以更快速的通过该索引来确定某条记录。
+
+2、为经常需要排序、分组和联合操作的字段建立索引
+
+3、为常作为查询条件的字段建立索引
+
+4．限制索引的数目： 越多的索引，会使更新表变得很浪费时间。
+
+5、尽量使用数据量少的索引：如果索引的值很长，那么查询的速度会受到影响。
+
+6、尽量使用前缀来索引：如果索引字段的值很长，最好使用值的前缀来索引。
+
+7、删除不再使用或者很少使用的索引 
+
+8 、最左前缀匹配原则，非常重要的原则。 
+
+9、尽量选择区分度高的列作为索引
+
+10、索引列不能参与计算，保持列“干净”：带函数的查询不参与索引。 
+
+11、尽量的扩展索引，不要新建索引
+
+#### 三范式是什么，
+
+##### 第一范式(1st NF －列都是不可再分)
+
+第一范式的目标是确保每列的原子性:如果每列都是不可再分的最小数据单元（也称为最小的原子 单元），则满足第一范式（1NF）
+
+##### 第二范式(2nd NF－每个表只描述一件事情)
+
+首先满足第一范式，并且表中非主键列不存在对主键的部分依赖。 第二范式要求每个表只描述一 件事情。
+
+##### 第三范式(3rd NF－ 不存在对非主键列的传递依赖)
+
+第三范式定义是，满足第二范式，并且表中的列不存在对非主键列的传递依赖。除了主键订单编 号外，顾客姓名依赖于非主键顾客编号。
+
+#### 数据库事务
+
+事务必须具备以下四个属性，简称 ACID 属性：
+
+##### 原子性（Atomicity）
+
+事务是一个完整的操作。事务的各步操作是不可分的（原子的）；要么都执行，要么都不执 行。
+
+##### 一致性（Consistency）
+
+当事务完成时，数据必须处于一致状态。
+
+##### 隔离性（Isolation） 
+
+对数据进行修改的所有并发事务是彼此隔离的，这表明事务必须是独立的，它不应以任何方 式依赖于或影响其他事务。 
+
+##### 永久性（Durability）
+
+事务完成后，它对数据库的修改被永久保持，事务日志能够保持事务的永久性。
 
 
 
-### 索引是怎么构建的，如何失效，三范式是什么，数据库事务，存储过程，触发器，
+### 存储过程，
+
+存储过程优化思路： 
+
+1. 尽量利用一些 sql 语句来替代一些小循环，例如聚合函数，求平均函数等。 
+2. 中间结果存放于临时表，加索引。
+3. 少使用游标。sql 是个集合语言，对于集合运算具有较高性能。而 cursors 是过程运算。比如 对一个 100 万行的数据进行查询。游标需要读表 100 万次，而不使用游标则只需要少量几次 读取。 
+4. 事务越短越好。sqlserver 支持并发操作。如果事务过多过长，或者隔离级别过高，都会造成 并发操作的阻塞，死锁。导致查询极慢，cpu 占用率极地。 5. 
+5. 使用 try-catch 处理错误异常。 
+6. 查找语句尽量不要放在循环内。
+
+### 触发器
+
+触发器是一段能自动执行的程序，是一种特殊的存储过程，触发器和普通的存储过程的区别是： 触发器是当对某一个表进行操作时触发。诸如：update、insert、delete 这些操作的时候，系统 会自动调用执行该表上对应的触发器。SQL Server 2005 中触发器可以分为两类：DML 触发器和 DDL 触发器，其中 DDL 触发器它们会影响多种数据定义语言语句而激发，这些语句有 create、 alter、drop 语句。
+
+##### 数据库并发策略
+
+**并发控制一般采用三种方法，分别是乐观锁和悲观锁以及时间戳。**
+
+时间戳就是在数据库表中单独加一列时间戳，比如“TimeStamp”，每次读出来的时候，把该字 段也读出来，当写回去的时候，把该字段加1，提交之前 ，跟数据库的该字段比较一次，如果比数 据库的值大的话，就允许保存，否则不允许保存，这种处理方法虽然不使用数据库系统提供的锁 机制，但是这种方法可以大大提高数据库处理的并发量， 以上悲观锁所说的加“锁”，其实分为几种锁，分别是：排它锁（写锁）和共享锁（读锁）。
+
+#### 数据库锁
+
+
+
+##### 行级锁：
+
+行级锁是一种排他锁，防止其他事务修改此行；在使用以下语句时，Oracle 会自动应用行级锁： 
+
+1. INSERT、UPDATE、DELETE、SELECT … FOR UPDATE [OF columns] [WAIT n | NOWAIT]; 
+2. SELECT … FOR UPDATE 语句允许用户一次锁定多条记录进行更新
+3. 使用 COMMIT 或 ROLLBACK 语句释放锁
+
+##### 表级锁 
+
+表示对当前操作的整张表加锁，它实现简单，资源消耗较少，被大部分 MySQL 引擎支持。最常使 用的 MYISAM 与 INNODB 都支持表级锁定。表级锁定分为表共享读锁（共享锁）与表独占写锁 （排他锁）。
+
+##### 页级锁
+
+页级锁是 MySQL 中锁定粒度介于行级锁和表级锁中间的一种锁。表级锁速度快，但冲突多，行级 冲突少，但速度慢。所以取了折衷的页级，一次锁定相邻的一组记录。BDB 支持页级锁
+
+#### 基于 Redis 分布式锁
+
+1. 获取锁的时候，使用 setnx（SETNX key val：当且仅当 key 不存在时，set 一个 key 为 val 的字符串，返回 1；若 key 存在，则什么都不做，返回 0）加锁，锁的 value 值为一个随机生成的 UUID，在释放锁的时候进行判断。并使用 expire 命令为锁添 加一个超时时间，超过该时间则自动释放锁
+2. 获取锁的时候调用 setnx，如果返回 0，则该锁正在被别人使用，返回 1 则成功获取 锁。 还设置一个获取的超时时间，若超过这个时间则放弃获取锁。
+3. 释放锁的时候，通过 UUID 判断是不是该锁，若是该锁，则执行 delete 进行锁释放。
+
+#### 分区分表
+
+分库分表有垂直切分和水平切分两种。
+
+##### 垂直切分(按照功能模块)
+
+将表按照功能模块、关系密切程度划分出来，部署到不同的库上。例如，我们会建立定义数 据库 workDB、商品数据库 payDB、用户数据库 userDB、日志数据库 logDB 等，分别用于 存储项目数据定义表、商品定义表、用户数据表、日志数据表等。
+
+##### 水平切分(按照规则划分存储
+
+当一个表中的数据量过大时，我们可以把该表的数据按照某种规则，例如 userID 散列，进行 划分，然后存储到多个结构相同的表，和不同的库上
+
+![image-20220119155926315](C:/Users/16143/Desktop/%E7%AC%94%E8%AE%B0/note-main/pic/image-20220119155926315.png)
+
+
+
+
+
+
+
+#### CAP 
+
+CAP 原则又称 CAP 定理，指的是在一个分布式系统中， Consistency（一致性）、 Availability （可用性）、Partition tolerance（分区容错性），三者不可得兼。 一致性（C）： 1. 在分布式系统中的所有数据备份，在同一时刻是否同样的值。（等同于所有节点访问同一份 最新的数据副本） 可用性（A）： 2. 在集群中一部分节点故障后，集群整体是否还能响应客户端的读写请求。（对数据更新具备 高可用性） 分区容忍性（P）： 3. 以实际效果而言，分区相当于对通信的时限要求。系统如果不能在时限内达成数据一致性， 就意味着发生了分区的情况，必须就当前操作在 C 和 A 之间做出选择
+
+
 
 
 
@@ -1943,6 +2651,12 @@ public class Test {
 ### 一致性算法：paxos算法，
 
 
+
+
+
+
+
+​                                                                                                                                                                                                                                                                                                                                
 
 ### 算法:冒泡，二分，
 
