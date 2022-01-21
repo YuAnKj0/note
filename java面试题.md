@@ -2137,35 +2137,23 @@ JSP的四大作用域：page、request、session、application
 
 ### spring的特点，
 
-轻量级
+##### 轻量级
 
-控制反转
+##### 控制反转
 
 通过控制反转(IOC)促进了低耦合，当应用了IOC，一个对象依赖的其他对象会通过被动的方式传递过来，而不是这个对象自己传递或者查找依赖对象
 
-
-
-
-
-面向切面
+##### 面向切面
 
 支持面向切面的编程，并且把应用业务逻辑和系统服务分开
 
-
-
-容器
+##### 容器
 
 Sping包含并且管理应用对象配置和生命周期，在这个意义上他就是个容器，你可以配置你的每个bean如何被创建，————给予一个可配置的原型，你的bean可以创建一个单独的实例或者每次需要时生成一个新的实例，以及他们是如何相互关联的
 
-
-
-
-
-框架集合
+##### 框架集合
 
 Spring可以将简单的组件配置组合成复杂的应用，在Spring中，应用对象被声明式的组合，典型的是在一个XML文件里，SPring提供了很多基础功能（事务管理，持久化框架等），将应用逻辑的开发留给开发者
-
-
 
 ### 核心组件有哪些，
 
@@ -2224,37 +2212,271 @@ Destroy 过期自动清理阶： Bean 不再需要时，会经过清理阶段，
 
 destroy-method 自配置清理：，如果这个 Bean 的 Spring 配置中配置了 destroy-method 属性，会自动调用其配置的 销毁方法
 
+### Sring Bean 的作用域
+
+**Spring 3 中为 Bean 定义了 5 中作用域，分别为 singleton（单例）、prototype（原型）、 request、session 和 global session**
+
+#### 5 种作用域说明如下：
+
+singleton：单例模式（多线程下不安全）
+
+##### 1、singleton：单例模式
+
+Spring IOC容器只会存在一个共享的Bean实例，无论有多少个Bean引用他，始终指向同一个对象，该模式在多线程下是不安全的，Singleton所用域是Spring中的缺省作用域，也可以显式的将Bean定义为Singleton模式，配置为
+
+```java
+<bean id="userDao" class="com.ioc.UserDaoImpl" scope="singleton"/>
+```
+
+##### 2、prototype:原型模式
+
+每次使用时创建，每次通过Spring容器获取prototype定义的bean时，容器都将创建一个新的Bean实例，每个Bean都有自己的属性和状态，而singleton只有一个对象，根据经验，对有状态的Bean使用prototype作用域，对无状态的Bean使用singleton作用域
+
+##### 3、Request：一次Request一个实例
+
+在一次Http请求中，容器会返回该Bean的一个实例，而对不同的Http请求也会产生新的Bean，而且该Bena仅在当前的Http  Request请求中有效，当前Http请求结束，该Bean的实例也会销毁
+
+```java
+<bean id="loginAction" class="com.cnblogs.Login" scope="request"/>
+```
+
+##### 4、session
+
+在一次 Http Session 中，容器会返回该 Bean 的同一实例。而对不同的 Session 请 求则会创建新的实例，该 bean 实例仅在当前 Session 内有效。同 Http 请求相同，每一次 session 请求创建新的实例，而不同的实例之间不共享属性，且实例仅在自己的 session 请求 内有效，请求结束，则实例将被销毁
+
+```java
+<bean id="userPreference" class="com.ioc.UserPreference" scope="session"/>
+```
+
+##### 5、global Session：
+
+在一个全局的 Http Session 中，容器会返回该 Bean 的同一个实例，仅在 使用 portlet context 时有效。
+
+#### Spring依赖注入的四种方式
+
+##### 1、构造器注入
+
+```java
+/*带参数，方便利用构造器进行注入*/ 
+ public CatDaoImpl(String message){ 
+ this. message = message; 
+ } 
+<bean id="CatDaoImpl" class="com.CatDaoImpl"> 
+<constructor-arg value=" message "></constructor-arg> 
+</bean>
+```
+
+##### 2、setter方法注入
+
+```java
+public class Id { 
+ private int id; 
+ public int getId() { return id; } 
+ public void setId(int id) { this.id = id; } 
+} 
+<bean id="id" class="com.id "> <property name="id" value="123"></property> </bean> 
+```
+
+##### 3、静态方法注入
+
+就是通过调用静态工厂的方法来获取自己需要的对象，为了让 spring 管理所有对象，我们不能直接通过"工程类.静态方法()"来获取对象，而是依然通过 spring 注入的形式获取
+
+```java
+public class DaoFactory { //静态工厂 
+	public static final FactoryDao getStaticFactoryDaoImpl(){ 
+  	return new StaticFacotryDaoImpl(); 
+  } 
+} 
+public class SpringAction { 
+	private FactoryDao staticFactoryDao; //注入对象
+ 	//注入对象的 set 方法 
+ 	public void setStaticFactoryDao(FactoryDao staticFactoryDao) { 
+		 this.staticFactoryDao = staticFactoryDao; 
+ } 
+} 
+//factory-method="getStaticFactoryDaoImpl"指定调用哪个工厂方法
+ <bean name="springAction" class=" SpringAction" > 
+ <!--使用静态工厂的方法注入对象,对应下面的配置文件--> 
+ <property name="staticFactoryDao" ref="staticFactoryDao"></property> 
+ </bean> 
+ <!--此处获取对象的方式是从工厂类中获取静态方法--> 
+<bean name="staticFactoryDao" class="DaoFactory" 
+factory-method="getStaticFactoryDaoImpl"></bean>
+```
 
 
 
+##### 4、实例工厂
 
+实例工厂的意思是获取对象实例的方法不是静态的，所以你需要首先 new 工厂类，再调用普通的 实例方法
 
+```java
+public class DaoFactory { //实例工厂 
+	public FactoryDao getFactoryDaoImpl(){ 
+ 		return new FactoryDaoImpl(); 
+	} 
+} 
+public class SpringAction { 
+ 	private FactoryDao factoryDao; //注入对象 
+ 	public void setFactoryDao(FactoryDao factoryDao) { 
+ 		this.factoryDao = factoryDao; 
+ 	} 
+} 
+ <bean name="springAction" class="SpringAction"> 
+ <!--使用实例工厂的方法注入对象,对应下面的配置文件--> 
+ <property name="factoryDao" ref="factoryDao"></property> 
+ </bean> 
+ <!--此处获取对象的方式是从工厂类中获取实例方法--> 
+<bean name="daoFactory" class="com.DaoFactory"></bean> 
+<bean name="factoryDao" factory-bean="daoFactory"
+factory-method="getFactoryDaoImpl"></bean> 
+```
 
+#### 5 种不同方式的自动装配
 
+Spring 装配包括手动装配和自动装配，手动装配是有基于 xml 装配、构造方法、setter 方法等 
 
-### 作用域
+自动装配有五种自动装配的方式，可以用来指导 Spring 容器用自动装配方式来进行依赖注入。 
 
-
+1. no：默认的方式是不进行自动装配，通过显式设置 ref 属性来进行装配。 
+2. byName：通过参数名 自动装配，Spring 容器在配置文件中发现 bean 的 autowire 属性被设 置成 byname，之后容器试图匹配、装配和该 bean 的属性具有相同名字的 bean。 
+3. byType：通过参数类型自动装配，Spring 容器在配置文件中发现 bean 的 autowire 属性被 设置成 byType，之后容器试图匹配、装配和该 bean 的属性具有相同类型的 bean。如果有多 个 bean 符合条件，则抛出错误
+4. constructor：这个方式类似于 byType， 但是要提供给构造器参数，如果没有确定的带参数 的构造器参数类型，将会抛出异常。
+5. autodetect：首先尝试使用 constructor 来自动装配，如果无法工作，则使用 byType 方式。
 
 ### spring aop又是什么
+
+AOP 把软件系统分为两个部分：核心关注点和横切关注点。业务处理的主要流 程是核心关注点，与之关系不大的部分是横切关注点。横切关注点的一个特点是，他们经常发生 在核心关注点的多处，而各处基本相似，比如权限认证、日志、事物。AOP 的作用在于分离系统 中的各种关注点，将核心关注点和横切关注点分离开来
+
+AOP 主要应用场景有： 
+
+1. Authentication 权限
+2. Caching 缓存 
+3. Context passing 内容传递
+4. Error handling 错误处理
+5. Lazy loading 懒加载
+6. Debugging 调试
+7. logging, tracing, profiling and monitoring 记录跟踪 优化 校准
+8. Performance optimization 性能优化
+9. Persistence 持久化
+10. Resource pooling 资源池
+11. Synchronization 同步
+12. Transactions 事务
+
+#### AOP 重点概念：
+
+![image-20220121113229761](C:/Users/16143/Desktop/%E7%AC%94%E8%AE%B0/note-main/pic/image-20220121113229761.png)
 
 
 
 ### spring MVC的工作流程
 
+Spring 的模型-视图-控制器（MVC）框架是围绕一个 DispatcherServlet 来设计的，这个 Servlet 会把请求分发给各个处理器，并支持可配置的处理器映射、视图渲染、本地化、时区与主题渲染 等，甚至还能支持文件上传。
+
+![image-20220121113502839](C:/Users/16143/Desktop/%E7%AC%94%E8%AE%B0/note-main/pic/image-20220121113502839.png)
+
+![img](C:/Users/16143/Desktop/%E7%AC%94%E8%AE%B0/note-main/pic/1121080-20190509202147059-745656946.jpg)
+
+##### web.xml加载过程：
+
+![image-20220121114415502](C:/Users/16143/Desktop/%E7%AC%94%E8%AE%B0/note-main/pic/image-20220121114415502.png)
+
 
 
 ### springboot 的原理
+
+1. 创建独立的 Spring 应用程序
+2. 嵌入的 Tomcat，无需部署 WAR 文件 
+3. 简化 Maven 配置 
+4.  自动配置 Spring 
+5.  提供生产就绪型功能，如指标，健康检查和外部配置 
+6. 绝对没有代码生成和对 XML 没有要求配置
+
+
+
+
+
+
+
+
 
 
 
 ### mybatis有几个缓存区
 
+Mybatis 中有一级缓存和二级缓存，默认情况下一级缓存是开启的，而且是不能关闭的。一级缓存 是指 SqlSession 级别的缓存，当在同一个 SqlSession 中进行相同的 SQL 语句查询时，第二次以 后的查询不会从数据库查询，而是直接从缓存中获取，一级缓存最多缓存 1024 条 SQL。二级缓存 是指可以跨 SqlSession 的缓存。是 mapper 级别的缓存，对于 mapper 级别的缓存不同的 sqlsession 是可以共享的
 
+##### mybatis框架：
+
+![mybatis框架](C:/Users/16143/Desktop/%E7%AC%94%E8%AE%B0/note-main/pic/watermark,type_ZmFuZ3poZW5naGVpdGk,shadow_10,text_aHR0cHM6Ly9ibG9nLmNzZG4ubmV0L2JhbnpodWFuaHU=,size_16,color_FFFFFF,t_70%23pic_center)
+
+
+
+
+
+![img](C:/Users/16143/Desktop/%E7%AC%94%E8%AE%B0/note-main/pic/20141122222537708)
+
+
+
+##### Mybatis 的一级缓存原理（sqlsession 级别）
+
+第一次发出一个查询 sql，sql 查询结果写入 sqlsession 的一级缓存中，缓存使用的数据结构是一 个 map。
+
+key：MapperID+offset+limit+Sql+所有的入参
+
+value：用户信息
+
+同一个 sqlsession 再次发出相同的 sql，就从缓存中取出数据。如果两次中间出现 commit 操作 （修改、添加、删除），本 sqlsession 中的一级缓存区域全部清空，下次再去缓存中查询不到所 以要从数据库查询，从数据库查询到再写入缓存。
+
+##### 二级缓存原理（mapper 基本）
+
+二级缓存的范围是 mapper 级别（mapper 同一个命名空间），mapper 以命名空间为单位创建缓 存数据结构，结构是 map。mybatis 的二级缓存是通过 CacheExecutor 实现的。CacheExecutor其实是 Executor 的代理对象。所有的查询操作，在 CacheExecutor 中都会先匹配缓存中是否存 在，不存在则查询数据库。
+
+key：MapperID+offset+limit+Sql+所有的入参
+
+###### 具体使用需要配置：
+
+1. Mybatis 全局配置中启用二级缓存配置
+2. 在对应的 Mapper.xml 中配置 cache 节点 
+3. 在对应的 select 查询节点中添加 useCache=true
 
 ### 微服务的组件：网关，注册中心，事件调度跟踪熔断分别是哪些组件
 
+#### 服务注册
 
+当下用于服 务注册的工具非常多 ZooKeeper，Consul，Etcd, 还有 Netflix 家的 eureka 等。服务注册有两种 形式：客户端注册和第三方注册。
+
+#### API 网关
+
+API Gateway 负责请求转发、合成和协议转换。所有来自客户端的请求都要先经过 API Gateway， 然后路由这些请求到对应的微服务。API Gateway 将经常通过调用多个微服务来处理一个请求以 及聚合多个服务的结果。它可以在 web 协议与内部使用的非 Web 友好型协议间进行转换，如 HTTP 协议、WebSocket 协议。
+
+#### 配置中心
+
+##### zookeeper 配置中心
+
+采取数据加载到内存方式解决高效获取的问题，借助 zookeeper 的节点 监听机制来实现实时感知。
+
+zookeeper架构：
+
+
+
+![image-20220121143123055](C:/Users/16143/Desktop/%E7%AC%94%E8%AE%B0/note-main/pic/image-20220121143123055.png)
+
+##### 事件调度（kafka）
+
+消息服务和事件的统一调度，常用用 kafka ，activemq 等。
+
+##### 服务跟踪（starter-sleuth）
+
+随着微服务数量不断增长，需要跟踪一个请求从一个微服务到下一个微服务的传播过程， Spring  Cloud Sleuth 正是解决这个问题，它在日志中引入唯一 ID，以保证微服务调用之间的一致性，这 样你就能跟踪某个请求是如何从一个微服务传递到下一个。
+
+##### 服务熔断（Hystrix）
+
+熔断器的原理很简单，如同电力过载保护器。它可以实现快速失败，如果它在一段时间内侦测到 许多类似的错误，**会强迫其以后的多个调用快速失败，不再访问远程服务器，从而防止应用程序 不断地尝试执行可能会失败的操作**，使得应用程序继续执行而不用等待修正错误，或者浪费 CPU 时间去等到长时间的超时产生。
+
+##### API 管理
+
+SwaggerAPI 管理工具。
 
 ### netty和rpc有什么联系
 
@@ -2262,25 +2484,222 @@ destroy-method 自配置清理：，如果这个 Bean 的 Spring 配置中配置
 
 ### 网络的七层架构和五层架构
 
+#### 网络 7 层架构
 
+##### 1、物理层：
+
+主要定义物理设备标准，如网线的接口类型、光纤的接口类型、各种传输介质的传输速率 等。它的主要作用是传输比特流（就是由 1、0 转化为电流强弱来进行传输,到达目的地后在转化为 1、0，也就是我们常说的**模数转换与数模转换**）。这一层的数据叫做比特。 
+
+##### 2、数据链路层：
+
+主要将从物理层接收的数据进行 **MAC 地址（网卡的地址）的封装与解封装**。常把这 一层的数据叫做帧。在这一层工作的设备是**交换机**，数据通过交换机来传输。  
+
+##### 3、网络层：
+
+主要将从下层接收到的数据进行 **IP 地址（例 192.168.0.1)的封装与解封装**。在这一层工 作的设备是**路由器**，常把这一层的数据叫做数据包。
+
+##### 4、传输层：
+
+定义了一些**传输数据的协议和端口号（WWW 端口 80 等）**，如：**TCP**（传输控制协议， 传输效率低，可靠性强，用于传输可靠性要求高，数据量大的数据），**UDP**（用户数据报协议， 与 TCP 特性恰恰相反，用于传输可靠性要求不高，数据量小的数据，如 QQ 聊天数据就是通过这 种方式传输的）。 主要是**将从下层接收的数据进行分段进行传输**，到达目的地址后在进行重组。 常常把这一层数据叫做段。  
+
+##### 5、会话层：
+
+通过传输层（端口号：传输端口与接收端口）**建立数据传输的通路**。主要在你的系统之间 发起会话或或者接受会话请求（设备之间需要互相认识可以是 IP 也可以是 MAC 或者是主机名）  
+
+##### 6、表示层
+
+主要是进行对接收的数据进行**解释、加密与解密、压缩与解压缩**等（也就是把计算机能够 识别的东西转换成人能够能识别的东西（如图片、声音等）） 
+
+##### 7、应用层 
+
+主要是一些**终端的应用**，比如说FTP（各种文件下载），WEB（IE浏览），QQ之类的（你 就把它理解成我们在电脑屏幕上可以看到的东西．就 是终端应用）。
 
 ### tcp/ip的原理
 
+TCP/IP 协议不是 TCP 和 IP 这两个协议的合称，而是指因特网整个 TCP/IP 协议族。从协议分层 模型方面来讲，TCP/IP 由四个层次组成：网络接口层、网络层、传输层、应用层。
 
+![image-20220121163744148](C:/Users/16143/Desktop/%E7%AC%94%E8%AE%B0/note-main/pic/image-20220121163744148.png)
+
+
+
+##### 原理：
+
+当HTTP发起一个消息请求时，应用层、传输层、网络层和链路层的相关协议依次对该消息请求附加对应的**首部**，这个首部标明了协议应该如何读取数据，最终在链路层生成**以太网数据包**，以太网数据包通过物理介质传输到目的主机，目的主机接收到以太网数据包以后，再一层一层采用对应的协议进行拆包，最后把应用层数据交给应用程序处理。简单来说，就是"发送请求时，封包，接收数据时，拆包。"
+
+![img](C:/Users/16143/Desktop/%E7%AC%94%E8%AE%B0/note-main/pic/v2-494c279122a2afa98823de69f5964c58_720w.jpg)
+
+##### 工作流程
+
+![img](C:/Users/16143/Desktop/%E7%AC%94%E8%AE%B0/note-main/pic/v2-ad19e41a6371d32e7c6cb489c8bc3fe1_720w.jpg)
 
 ### tcp为什么需要三次握手
+
+TCP 在传输之前会进行三次沟通，一般称为“三次握手”，传完数据断开的时候要进行四次沟通，一般 称为“四次挥手”。
+
+第一次握手：主机 A 发送位码为 syn＝1,随机产生 seq number=1234567 的数据包到服务器，主机 B 由 SYN=1 知道，A 要求建立联机； 
+
+第二次握手：主机 B 收到请求后要确认联机信息，向 A 发 送 ack number=( 主 机 A 的 seq+1),syn=1,ack=1,随机产生 seq=7654321 的包
+
+第三次握手：主机 A 收到后检查 ack number 是否正确，即第一次发送的 seq number+1,以及位码 ack 是否为 1，若正确，主机 A 会再发送 ack number=(主机 B 的 seq+1),ack=1，主机 B 收到后确认seq 值与 ack=1 则连接建立成功。
+
+![image-20220121164240757](C:/Users/16143/Desktop/%E7%AC%94%E8%AE%B0/note-main/pic/image-20220121164240757.png)
+
+TCP 建立连接要进行三次握手，而断开连接要进行四次。这是由于 TCP 的半关闭造成的。因为 TCP 连 接是全双工的(即数据可在两个方向上同时传递)所以进行关闭时每个方向上都要单独进行关闭。这个单 方向的关闭就叫半关闭。当一方完成它的数据发送任务，就发送一个 FIN 来向另一方通告将要终止这个 方向的连接
+
+1） 关闭客户端到服务器的连接：首先客户端 A 发送一个 FIN，用来关闭客户到服务器的数据传送， 然后等待服务器的确认。其中终止标志位 FIN=1，序列号 seq=u 
+
+2） 服务器收到这个 FIN，它发回一个 ACK，确认号 ack 为收到的序号加 1。 
+
+3） 关闭服务器到客户端的连接：也是发送一个 FIN 给客户端。 
+
+4） 客户段收到 FIN 后，并发回一个 ACK 报文确认，并将确认序号 seq 设置为收到序号加 1。 首先进行关闭的一方将执行主动关闭，而另一方执行被动关闭。
+
+![image-20220121164435483](C:/Users/16143/Desktop/%E7%AC%94%E8%AE%B0/note-main/pic/image-20220121164435483.png)
+
+主机 A 发送 FIN 后，进入终止等待状态， 服务器 B 收到主机 A 连接释放报文段后，就立即 给主机 A 发送确认，然后服务器 B 就进入 close-wait 状态，此时 TCP 服务器进程就通知高 层应用进程，因而从 A 到 B 的连接就释放了。此时是“半关闭”状态。即 A 不可以发送给 B，但是 B 可以发送给 A。此时，若 B 没有数据报要发送给 A 了，其应用进程就通知 TCP 释 放连接，然后发送给 A 连接释放报文段，并等待确认。A 发送确认后，进入 time-wait，注 意，此时 TCP 连接还没有释放掉，然后经过时间等待计时器设置的 2MSL 后，A 才进入到 close 状态。
 
 
 
 ### http的原理和状态
 
+HTTP 是一个无状态的协议。无状态是指客户机（Web 浏览器）和服务器之间不需要建立持久的连接， 这意味着当一个客户端向服务器端发出请求，然后服务器返回响应(response)，连接就被关闭了，在服 务器端不保留连接的有关信息.HTTP 遵循请求(Request)/应答(Response)模型。客户机（浏览器）向 服务器发送请求，服务器处理请求并返回适当的应答。所有 HTTP 连接都被构造成一套请求和应答。
 
+##### 传输流程
+
+1：地址解析 如用客户端浏览器请求这个页面：http://localhost.com:8080/index.htm 从中分解出协议名、主机名、 端口、对象路径等部分，对于我们的这个地址，解析得到的结果如下： 
+
+协议名：http 
+
+主机名：localhost.com 
+
+端口：8080 
+
+对象路径：/index.htm
+
+在这一步，需要域名系统 DNS 解析域名 localhost.com,得主机的 IP 地址。
+
+2：封装 HTTP 请求数据包 把以上部分结合本机自己的信息，封装成一个 HTTP 请求数据包 
+
+3：封装成 TCP 包并建立连接 封装成 TCP 包，建立 TCP 连接（TCP 的三次握手）
+
+4：客户机发送请求命 4）客户机发送请求命令：建立连接后，客户机发送一个请求给服务器，请求方式的格式为：统一资 源标识符（URL）、协议版本号，后边是 MIME 信息包括请求修饰符、客户机信息和可内容。 
+
+5：服务器响应 服务器接到请求后，给予相应的响应信息，其格式为一个状态行，包括信息的协议版本号、一个成功或 错误的代码，后边是 MIME 信息包括服务器信息、实体信息和可能的内容。 
+
+6：服务器关闭 TCP 连接 服务器关闭 TCP 连接：一般情况下，一旦 Web 服务器向浏览器发送了请求数据，它就要关闭 TCP 连 接，然后如果浏览器或者服务器在其头信息加入了这行代码 Connection:keep-alive，TCP 连接在发送 后将仍然保持打开状态，于是，浏览器可以继续通过相同的连接发送请求。保持连接节省了为每个请求 建立新连接所需的时间，还节约了网络带宽。
+
+| **分类** | **分类描述**                                   |
+| -------- | ---------------------------------------------- |
+| 1**      | 信息，服务器收到请求，需要请求者继续执行操作   |
+| 2**      | 成功，操作被成功接收并处理                     |
+| 3**      | 重定向，需要进一步的操作以完成请求             |
+| 4**      | 客户端错误，请求包含语法错误或无法完成请求     |
+| 5**      | 服务器错误，服务器在处理请求的过程中发生了错误 |
+
+HTTP状态码列表:
+
+| **状态码** | **状态码英文名称**              | **中文描述**                                                 |
+| ---------- | ------------------------------- | ------------------------------------------------------------ |
+| 100        | Continue                        | 继续。客户端应继续其请求                                     |
+| 101        | Switching Protocols             | 切换协议。服务器根据客户端的请求切换协议。只能切换到更高级的协议，例如，切换到HTTP的新版本协议 |
+|            |                                 |                                                              |
+| 200        | OK                              | 请求成功。一般用于GET与POST请求                              |
+| 201        | Created                         | 已创建。成功请求并创建了新的资源                             |
+| 202        | Accepted                        | 已接受。已经接受请求，但未处理完成                           |
+| 203        | Non-Authoritative Information   | 非授权信息。请求成功。但返回的meta信息不在原始的服务器，而是一个副本 |
+| 204        | No Content                      | 无内容。服务器成功处理，但未返回内容。在未更新网页的情况下，可确保浏览器继续显示当前文档 |
+| 205        | Reset Content                   | 重置内容。服务器处理成功，用户终端（例如：浏览器）应重置文档视图。可通过此返回码清除浏览器的表单域 |
+| 206        | Partial Content                 | 部分内容。服务器成功处理了部分GET请求                        |
+|            |                                 |                                                              |
+| 300        | Multiple Choices                | 多种选择。请求的资源可包括多个位置，相应可返回一个资源特征与地址的列表用于用户终端（例如：浏览器）选择 |
+| 301        | Moved Permanently               | 永久移动。请求的资源已被永久的移动到新URI，返回信息会包括新的URI，浏览器会自动定向到新URI。今后任何新的请求都应使用新的URI代替 |
+| 302        | Found                           | 临时移动。与301类似。但资源只是临时被移动。客户端应继续使用原有URI |
+| 303        | See Other                       | 查看其它地址。与301类似。使用GET和POST请求查看               |
+| 304        | Not Modified                    | 未修改。所请求的资源未修改，服务器返回此状态码时，不会返回任何资源。客户端通常会缓存访问过的资源，通过提供一个头信息指出客户端希望只返回在指定日期之后修改的资源 |
+| 305        | Use Proxy                       | 使用代理。所请求的资源必须通过代理访问                       |
+| 306        | Unused                          | 已经被废弃的HTTP状态码                                       |
+| 307        | Temporary Redirect              | 临时重定向。与302类似。使用GET请求重定向                     |
+|            |                                 |                                                              |
+| 400        | Bad Request                     | 客户端请求的语法错误，服务器无法理解                         |
+| 401        | Unauthorized                    | 请求要求用户的身份认证                                       |
+| 402        | Payment Required                | 保留，将来使用                                               |
+| 403        | Forbidden                       | 服务器理解请求客户端的请求，但是拒绝执行此请求               |
+| 404        | Not Found                       | 服务器无法根据客户端的请求找到资源（网页）。通过此代码，网站设计人员可设置"您所请求的资源无法找到"的个性页面 |
+| 405        | Method Not Allowed              | 客户端请求中的方法被禁止                                     |
+| 406        | Not Acceptable                  | 服务器无法根据客户端请求的内容特性完成请求                   |
+| 407        | Proxy Authentication Required   | 请求要求代理的身份认证，与401类似，但请求者应当使用代理进行授权 |
+| 408        | Request Time-out                | 服务器等待客户端发送的请求时间过长，超时                     |
+| 409        | Conflict                        | 服务器完成客户端的 PUT 请求时可能返回此代码，服务器处理请求时发生了冲突 |
+| 410        | Gone                            | 客户端请求的资源已经不存在。410不同于404，如果资源以前有现在被永久删除了可使用410代码，网站设计人员可通过301代码指定资源的新位置 |
+| 411        | Length Required                 | 服务器无法处理客户端发送的不带Content-Length的请求信息       |
+| 412        | Precondition Failed             | 客户端请求信息的先决条件错误                                 |
+| 413        | Request Entity Too Large        | 由于请求的实体过大，服务器无法处理，因此拒绝请求。为防止客户端的连续请求，服务器可能会关闭连接。如果只是服务器暂时无法处理，则会包含一个Retry-After的响应信息 |
+| 414        | Request-URI Too Large           | 请求的URI过长（URI通常为网址），服务器无法处理               |
+| 415        | Unsupported Media Type          | 服务器无法处理请求附带的媒体格式                             |
+| 416        | Requested range not satisfiable | 客户端请求的范围无效                                         |
+| 417        | Expectation Failed              | 服务器无法满足Expect的请求头信息                             |
+|            |                                 |                                                              |
+| 500        | Internal Server Error           | 服务器内部错误，无法完成请求                                 |
+| 501        | Not Implemented                 | 服务器不支持请求的功能，无法完成请求                         |
+| 502        | Bad Gateway                     | 作为网关或者代理工作的服务器尝试执行请求时，从远程服务器接收到了一个无效的响应 |
+| 503        | Service Unavailable             | 由于超载或系统维护，服务器暂时的无法处理客户端的请求。延时的长度可包含在服务器的Retry-After头信息中 |
+| 504        | Gateway Time-out                | 充当网关或代理的服务器，未及时从远端服务器获取请求           |
+| 505        | HTTP Version not supported      | 服务器不支持请求的HTTP协议的版本，无法完成处理               |
 
 ### 日志框架 log4j
+
+Log4j 是 Apache 的一个开源项目，通过使用 Log4j，我们可以控制日志信息输送的目的地是控制台、 文件、GUI 组件，甚至是套接口服务器、NT 的事件记录器、UNIX Syslog 守护进程等；我们也可以控 制每一条日志的输出格式；通过定义每一条日志信息的级别，我们能够更加细致地控制日志的生成过程。 Log4j 由三个重要的组成构成：日志记录器(Loggers)，输出端(Appenders)和日志格式化器(Layout)。 
+
+1.Logger：控制要启用或禁用哪些日志记录语句，并对日志信息进行级别限制 
+
+2.Appenders : 指定了日志将打印到控制台还是文件中 
+
+3.Layout : 控制日志信息的显示格式
+
+Log4j 中将要输出的 Log 信息定义了 5 种级别，依次为 DEBUG、INFO、WARN、ERROR 和 FATAL， 当输出时，只有级别高过配置中规定的 级别的信息才能真正的输出，这样就很方便的来配置不同情况 下要输出的内容，而不需要更改代码。
+
+
+
+
 
 
 
 ### zookeeper有那些角色，投票机制什么
+
+#### 角色：
+
+Zookeeper 集群是一个基于主从复制的高可用集群，每个服务器承担如下三种角色中的一种
+
+##### Leader：
+
+1、一个 Zookeeper 集群同一时间只会有一个实际工作的 Leader，它会发起并维护与各 Follwer 及 Observer 间的心跳。 
+
+2、所有的写操作必须要通过 Leader 完成再由 Leader 将写操作广播给其它服务器。只要有超过 半数节点（不包括 observeer 节点）写入成功，该写请求就会被提交（类 2PC 协议）。
+
+##### Follower
+
+1、一个 Zookeeper 集群可能同时存在多个 Follower，它会响应 Leader 的心跳， 2. 
+
+2、Follower 可直接处理并返回客户端的读请求，同时会将写请求转发给 Leader 处理，并且负责在 Leader 处理写请求时对请求进行投票。
+
+##### Observer
+
+角色与 Follower 类似，但是无投票权。Zookeeper 需保证高可用和强一致性，为了支持更多的客 户端，需要增加更多 Server；Server 增多，投票阶段延迟增大，影响性能；引入 Observer， Observer 不参与投票； Observers 接受客户端的连接，并将写请求转发给 leader 节点； 加入更 多 Observer 节点，提高伸缩性，同时不影响吞吐率。
+
+#### 投票机制
+
+每个 sever 首先给自己投票，然后用自己的选票和其他 sever 选票对比，权重大的胜出，使用权 重较大的更新自身选票箱。具体选举过程如下： 
+
+1. 每个 Server 启动以后都询问其它的 Server 它要投票给谁。对于其他 server 的询问， server 每次根据自己的状态都回复自己推荐的 leader 的 id 和上一次处理事务的 zxid（系 统启动时每个 server 都会推荐自己）
+2. 收到所有 Server 回复以后，就计算出 zxid 最大的哪个 Server，并将这个 Server 相关信 息设置成下一次要投票的 Server。 
+3. 计算这过程中获得票数最多的的 sever 为获胜者，如果获胜者的票数超过半数，则改 server 被选为 leader。否则，继续这个过程，直到 leader 被选举出来
+4. leader 就会开始等待 server 连接 
+5. Follower 连接 leader，将最大的 zxid 发送给 leader 
+6. Leader 根据 follower 的 zxid 确定同步点，至此选举阶段完成。 
+7. 选举阶段完成 Leader 同步后通知 follower 已经成为 uptodate 状态 
+8. Follower 收到 uptodate 消息后，又可以重新接受 client 的请求进行服务了
+
+
 
 
 
@@ -2324,7 +2743,11 @@ destroy-method 自配置清理：，如果这个 Bean 的 Spring 配置中配置
 
 ### rabbit MQ的几种工作模式，怎么保证消息的可靠性，怎么保证消息不被重复消费，消息的有序性，
 
-Rabbit MQ架构：
+AMQP ：Advanced Message Queue，高级消息队列协议。它是应用层协议的一个开放标准，为 面向消息的中间件设计，基于此协议的客户端与消息中间件可传递消息，并不受产品、开发语言 等条件的限制。
+
+RabbitMQ 最初起源于金融系统，用于在分布式系统中存储转发消息，在易用性、扩展性、高可 用性等方面表现不俗。
+
+#### Rabbit MQ架构：
 
 
 
@@ -2350,11 +2773,21 @@ Broker：表示消息队列服务器实体
 
 
 
-Exchange 类型：
+#### Exchange 类型：
 
 Exchange 分发消息时根据类型的不同分发策略有区别，目前共四种类型：direct、fanout、 topic、headers 。headers 匹配 AMQP 消息的 header 而不是路由键，此外 headers 交换器和 direct 交换器完全一致，但性能差很多，目前几乎用不到了，所以直接看另外三种类型：
 
+##### Direct 键（routing key）分布：
 
+Direct：消息中的路由键（routing key）如果和 Binding 中的 binding key 一致， 交换器就将消息发到对应的队列中。它是完全匹配、单播的模式。
+
+##### Fanout（广播分发）
+
+Fanout：每个发到 fanout 类型交换器的消息都会分到所有绑定的队列上去。很像子 网广播，每台子网内的主机都获得了一份复制的消息。fanout 类型转发消息是最快 的
+
+##### topic 交换器（模式匹配）
+
+topic 交换器：**topic 交换器通过模式匹配分配消息的路由键属性，将路由键和某个模 式进行匹配，此时队列需要绑定到一个模式上。**它将路由键和绑定键的字符串切分成 单词，这些单词之间用点隔开。它同样也会识别两个通配符：符号“#”和符号 “”。#匹配 0 个或多个单词，匹配不多不少一个单词
 
 
 
@@ -2363,6 +2796,8 @@ Exchange 分发消息时根据类型的不同分发策略有区别，目前共�
 
 
 ### kafka的设计理念
+
+Kafka 是一种高吞吐量、分布式、基于发布/订阅的消息系统，最初由 LinkedIn 公司开发，使用 Scala 语言编写，目前是 Apache 的开源项目。
 
 
 
@@ -2396,6 +2831,40 @@ Kafka、ActiveMQ.RabbitMQ、RocketMQ有什么优缺点?
 
 
 ### mangoDB 适合在什么场景下使用
+
+在高负载的情 况下，添加更多的节点，可以保证服务器性能
+
+MongoDB 将数据存储为一个文档，数据结构由键值(key=>value)对组成。MongoDB 文档类似 于 JSON 对象。字段值可以包含其他文档，数组及文档数组。
+
+![image-20220121171045586](C:/Users/16143/Desktop/%E7%AC%94%E8%AE%B0/note-main/pic/image-20220121171045586.png)
+
+#### 特点
+
+MongoDB 是一个面向文档存储的数据库，操作起来比较简单和容易。
+
+x  你可以在 MongoDB 记录中设置任何属性的索引 (如：FirstName="Sameer",Address="8 Ga ndhi Road")来实现更快的排序。 
+
+x  你可以通过本地或者网络创建数据镜像，这使得 MongoDB 有更强的扩展性。 
+
+x  如果负载的增加（需要更多的存储空间和更强的处理能力） ，它可以分布在计算机网络中的其 他节点上这就是所谓的分片。 
+
+x  Mongo 支持丰富的查询表达式。查询指令使用 JSON 形式的标记，可轻易查询文档中内嵌的 对象及数组。 
+
+x  MongoDb 使用 update()命令可以实现替换完成的文档（数据）或者一些指定的数据字段 。 
+
+x  Mongodb 中的 Map/reduce 主要是用来对数据进行批量处理和聚合操作。 
+
+x  Map 和 Reduce。Map 函数调用 emit(key,value)遍历集合中所有的记录，将 key 与 value 传 给 Reduce 函数进行处理。 
+
+x  Map 函数和 Reduce 函数是使用 Javascript 编写的，并可以通过 db.runCommand 或 mapre duce 命令来执行 MapReduce 操作。
+
+x  GridFS 是 MongoDB 中的一个内置功能，可以用于存放大量小文件。 
+
+x  MongoDB 允许在服务端执行脚本，可以用 Javascript 编写某个函数，直接在服务端执行，也 可以把函数的定义存储在服务端，下次直接调用即可
+
+
+
+
 
 
 
@@ -2584,15 +3053,13 @@ Mysql proxy：功能尚可。
 
 触发器是一段能自动执行的程序，是一种特殊的存储过程，触发器和普通的存储过程的区别是： 触发器是当对某一个表进行操作时触发。诸如：update、insert、delete 这些操作的时候，系统 会自动调用执行该表上对应的触发器。SQL Server 2005 中触发器可以分为两类：DML 触发器和 DDL 触发器，其中 DDL 触发器它们会影响多种数据定义语言语句而激发，这些语句有 create、 alter、drop 语句。
 
-##### 数据库并发策略
+### 数据库并发策略
 
 **并发控制一般采用三种方法，分别是乐观锁和悲观锁以及时间戳。**
 
 时间戳就是在数据库表中单独加一列时间戳，比如“TimeStamp”，每次读出来的时候，把该字 段也读出来，当写回去的时候，把该字段加1，提交之前 ，跟数据库的该字段比较一次，如果比数 据库的值大的话，就允许保存，否则不允许保存，这种处理方法虽然不使用数据库系统提供的锁 机制，但是这种方法可以大大提高数据库处理的并发量， 以上悲观锁所说的加“锁”，其实分为几种锁，分别是：排它锁（写锁）和共享锁（读锁）。
 
-#### 数据库锁
-
-
+### 数据库锁
 
 ##### 行级锁：
 
