@@ -61,15 +61,34 @@ $ sudo yum install docker-ce docker-ce-cli containerd.io
 
 Docker 安装完默认未启动。并且已经创建好 docker 用户组，但该用户组下没有用户。
 
+或者
+
+使用`wget`从 https://get.docker.com 获取并运行 Docker 安装脚本，然后采用 Shell 中管道（`pipe`）的方式来执行这个脚本。
+
+```
+wget -qO- https://get.docker.com/ | sh
+```
+
+
+
 ### d.通过将用户添加到docker用户组可以将sudo去掉
 
 命令如下:
 
+```shell
 sudo groupadd docker #添加docker用户组
-
 sudo gpasswd -a $USER docker #将登陆用户加入到docker用户组中
-
 newgrp docker #更新用户组
+```
+
+将docker注册为服务
+
+```shell
+systemctl enable docker #将docker注册为服务
+service docker restart 
+```
+
+
 
 ### e.启动 Docker。
 
