@@ -82,7 +82,7 @@ Parallel Scavenge(用于新生代，采用复制算法)（并行收集器）
 
 CMS(用于老年代，采用标记清除算法)（并发收集器）
 
-Gl(jdk7以后的版本推出，维持高回收率，减少停顿，Java9 默认GC算法是Gl,且把CMS标记为废弃)
+G1(jdk7以后的版本推出，维持高回收率，减少停顿，Java9 默认GC算法是Gl,且把CMS标记为废弃)
 
 JVM分为两种模式
 
@@ -113,7 +113,7 @@ obj=null;//手动置空
 
 只要强引用存在，垃圾回收器将永远不会回收被引用的对象，哪怕内存不足，jvm会直接抛出OutOfMemoryError异常，不会去回收，如果想中断强引用与对象之间的联系，可以显示的将对象赋值为null，这样一来，jvm可以适时的回收对象了。
 
-软引用(Soft Refrence) ：用来描述一些非必须但有用的对象，在内存足够的时候，软引用对象不会被回收，只有内存不足时，系统则会回收软引用对象，如果回收了软引用对象之后仍然没有足够的内存，才会抛出内存溢出异常。这种特性通常用来实现缓存技术，如网页缓存，图片缓存等，用SoftRefrence类表示软引用。
+软引用(Soft Refrence) ：用来描述一些非必须但有用的对象，在内存足够的时候，软引用对象o不会被回收，只有内存不足时，系统则会回收软引用对象，如果回收了软引用对象之后仍然没有足够的内存，才会抛出内存溢出异常。这种特性通常用来实现缓存技术，如网页缓存，图片缓存等，用SoftRefrence类表示软引用。
 
 ```java
  private static void testSoftReference() {
@@ -3174,6 +3174,24 @@ public static int biSearvh(int[] array,int target){
 
 ![image-20220124114722882](C:/Users/16143/Desktop/%E7%AC%94%E8%AE%B0/note-main/pic/image-20220124114722882.png)
 
+例题：
+
+![image-20220125091220960](C:/Users/16143/Desktop/%E7%AC%94%E8%AE%B0/note-main/pic/image-20220125091220960.png)
+
+```java
+public void yihuo0(int[] arr){
+        int eor=0;
+        for (int cur:arr) {
+            eor=eor^cur;
+        }
+        System.out.println(eor);
+    }
+```
+
+
+
+
+
 
 
 
@@ -3212,6 +3230,10 @@ size=9
 length=5
 
 data_type=xxx(int,float….)
+
+
+
+
 
 结构定义：
 
